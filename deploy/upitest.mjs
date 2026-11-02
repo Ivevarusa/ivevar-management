@@ -1,0 +1,11 @@
+import puppeteer from 'puppeteer-core';
+const B='http://127.0.0.1:8787';
+await fetch(B+'/api/setup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:'Owner',email:'owner@ivevar.com',password:'testpass123'})});
+const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.setViewport({width:1400,height:900});await p.goto(B+'/',{waitUntil:'domcontentloaded'});await new Promise(r=>setTimeout(r,800));
+await p.type('#lEmail','owner@ivevar.com');await p.type('#lPw','testpass123');await p.click('#lf button[type=submit]');await new Promise(r=>setTimeout(r,1500));
+await p.evaluate(()=>location.hash='accounts');await new Promise(r=>setTimeout(r,600));
+console.log(await p.evaluate(()=>[...document.querySelectorAll('.kpi .l')].map(k=>k.textContent).join(' | ')));
+await p.click('#view .phead .act .btn.pri');await new Promise(r=>setTimeout(r,300));
+console.log('accounts in form:',await p.evaluate(()=>[...document.querySelector('[data-k="account"]').options].map(o=>o.value).filter(Boolean).join(',')));
+await p.screenshot({path:'noupi.png'});console.log('errors',errs);await b.close();

@@ -1,0 +1,10 @@
+import puppeteer from 'puppeteer-core';
+const B='http://127.0.0.1:8787';
+const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.setViewport({width:1400,height:900});await p.goto(B+'/',{waitUntil:'domcontentloaded'});await new Promise(r=>setTimeout(r,800));
+await p.type('#lEmail','owner@ivevar.com');await p.type('#lPw','testpass123');await p.click('#lf button[type=submit]');await new Promise(r=>setTimeout(r,1500));
+await p.evaluate(()=>orderDetail(S.orders[0]));await new Promise(r=>setTimeout(r,500));
+console.log(await p.evaluate(()=>document.querySelector('.modal')?.innerText.slice(0,900)));
+await p.evaluate(()=>{document.querySelectorAll('.ov').forEach(o=>o.remove());location.hash='accounts'});await new Promise(r=>setTimeout(r,500));
+console.log(await p.evaluate(()=>[...document.querySelectorAll('.kpi')].slice(4).map(k=>k.innerText.replace(/\n/g,' ')).join(' | ')));
+console.log('errors',errs);await b.close();

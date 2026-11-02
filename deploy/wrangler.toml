@@ -1,0 +1,12 @@
+name = "ivevar-erp"
+main = "../dist/worker.mjs"
+compatibility_date = "2025-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ivevar-erp-db"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "ivevar-erp-files"

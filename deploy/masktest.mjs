@@ -1,0 +1,16 @@
+import puppeteer from 'puppeteer-core';
+const B='http://127.0.0.1:8789';
+const J=(p,b,t)=>fetch(B+p,{method:'POST',headers:{'content-type':'application/json',...(t?{authorization:'Bearer '+t}:{})},body:JSON.stringify(b)}).then(r=>r.json());
+const a=(await J('/api/setup',{name:'Ankit',email:'owner@ivevar.com',password:'testpass123'})).token;
+await J('/api/save',{coll:'cash',doc:{type:'Income',category:'Opening balance',account:'Cash',amount:50000,date:'2026-11-01'}},a);
+const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.setViewport({width:1400,height:900});await p.goto(B+'/',{waitUntil:'domcontentloaded'});await new Promise(x=>setTimeout(x,800));
+await p.type('#lEmail','owner@ivevar.com');await p.type('#lPw','testpass123');await p.click('#lf button[type=submit]');await new Promise(x=>setTimeout(x,1500));
+const vals=()=>p.evaluate(()=>[...document.querySelectorAll('.mv')].map(x=>x.innerText.replace(/\n/g,' ')).join(' | '));
+console.log('start:',await vals());
+await p.evaluate(()=>window.scrollTo(0,520));await p.screenshot({path:'mask.png'});
+await p.evaluate(()=>document.querySelector('.cashrow .eyei').click());await new Promise(x=>setTimeout(x,300));
+console.log('after cash eye:',await vals());
+await p.evaluate(()=>document.querySelector('.sd-kpis .eyei').click());await new Promise(x=>setTimeout(x,300));
+console.log('after sales eye:',await vals());
+console.log('errors',errs);await b.close();

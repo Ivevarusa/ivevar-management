@@ -1,0 +1,18 @@
+import puppeteer from 'puppeteer-core';
+const B='http://127.0.0.1:8787';const J=(p,b,t)=>fetch(B+p,{method:'POST',headers:{'content-type':'application/json',...(t?{authorization:'Bearer '+t}:{})},body:JSON.stringify(b)}).then(r=>r.json().then(j=>({s:r.status,j})));
+const a=(await J('/api/setup',{name:'Ankit',email:'owner@ivevar.com',password:'testpass123'})).j.token;
+console.log('old role rejected:',(await J('/api/users',{name:'X',email:'x@ivevar.com',role:'employee',active:true,password:'pass12345'},a)).j.error);
+console.log('office created:',(await J('/api/users',{name:'Ravi',email:'ravi@ivevar.com',role:'office',active:true,password:'pass12345'},a)).s);
+const o=(await J('/api/login',{email:'ravi@ivevar.com',password:'pass12345'})).j.token;
+console.log('office adds cash entry:',(await J('/api/save',{coll:'cash',doc:{type:'Income',category:'Sales (other)',account:'Cash',amount:1000,date:'2026-11-02'}},o)).s);
+console.log('office adds user (should fail):',(await J('/api/users',{name:'Y',email:'y@ivevar.com',role:'office',active:true,password:'pass12345'},o)).s);
+const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.setViewport({width:1400,height:900});await p.goto(B+'/',{waitUntil:'domcontentloaded'});await new Promise(r=>setTimeout(r,800));
+await p.type('#lEmail','ravi@ivevar.com');await p.type('#lPw','pass12345');await p.click('#lf button[type=submit]');await new Promise(r=>setTimeout(r,1500));
+console.log('office menu:',await p.evaluate(()=>[...document.querySelectorAll('#nav a')].map(a=>a.textContent).join(' | ')));
+console.log('who:',await p.evaluate(()=>document.getElementById('who').innerText.split('\n')[0]));
+await p.evaluate(()=>{logout()});await new Promise(r=>setTimeout(r,800));
+await p.type('#lEmail','owner@ivevar.com');await p.type('#lPw','testpass123');await p.click('#lf button[type=submit]');await new Promise(r=>setTimeout(r,1500));
+await p.evaluate(()=>{location.hash='setup'});await new Promise(r=>setTimeout(r,500));await p.click('#view .phead .act .btn.pri');await new Promise(r=>setTimeout(r,300));
+console.log('role options:',await p.evaluate(()=>[...document.querySelector('[data-k="role"]').options].map(o=>o.text).join(' | ')));
+console.log('errors',errs);await b.close();
