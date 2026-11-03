@@ -124,7 +124,9 @@ function renderNav(){
   const rf=$('#railfoot');if(rf)rf.innerHTML=`<div class="rf-user"><b>${esc(ME.name||'')}</b><div class="rf-sub">${esc(roleLabel(ME))}${SET.company&&SET.company.name?' · '+esc(SET.company.name):''}</div></div><select class="rf-lang" aria-label="Language" onchange="LANG=this.value;try{localStorage.setItem('erp_lang',LANG)}catch(e){};render()"><option value="en" ${LANG==='en'?'selected':''}>English</option><option value="hi" ${LANG==='hi'?'selected':''}>हिंदी</option><option value="gu" ${LANG==='gu'?'selected':''}>ગુજરાતી</option></select><div class="rf-links"><a onclick="pwForm()">Change password</a> · <a onclick="logout()">Logout</a></div>`}
 function go(mod,arg){ROUTE_ARG=arg||null;if(location.hash!=='#'+mod)location.hash=mod;else render()}
 window.addEventListener('hashchange',()=>{ROUTE=(location.hash||'#dashboard').slice(1)||'dashboard';$('#app').classList.remove('navopen');render();window.scrollTo(0,0)});
-$('#menuBtn').onclick=()=>$('#app').classList.toggle('navopen');
+$('#menuBtn').onclick=e=>{e.stopPropagation();$('#app').classList.toggle('navopen')};
+/* tap outside the drawer (on the dimmed backdrop) closes the mobile sidebar */
+document.addEventListener('click',e=>{const app=$('#app');if(app&&app.classList.contains('navopen')&&!e.target.closest('#rail')&&!e.target.closest('#menuBtn'))app.classList.remove('navopen')});
 $('#langSel').value=LANG;$('#langSel').onchange=e=>{LANG=e.target.value;try{localStorage.setItem('erp_lang',LANG)}catch(x){}render()};
 
 /* ---------- global search (brief §15) ---------- */
