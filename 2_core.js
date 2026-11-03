@@ -95,7 +95,11 @@ const ICONS={
  phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2 4.1 2 2 0 0 1 4 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7A2 2 0 0 1 22 16.9z"/>',
  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
  globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/>',
- clipboard:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1H9z"/><path d="M9 11h6M9 15h4"/>'};
+ clipboard:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1H9z"/><path d="M9 11h6M9 15h4"/>',
+ link:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+ bitcoin:'<circle cx="12" cy="12" r="9"/><path d="M9.8 7.5h4a2 2 0 0 1 0 4h-4m0 0h4.3a2 2 0 0 1 0 4H9.8m0-8V6m3 1.5V6m-3 10v1.5m3-1.5V17M9.8 7.5v8"/>',
+ mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="8" y1="21" x2="16" y2="21"/>',
+ video:'<rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4z"/>'};
 const ic=(name,cls)=>`<svg class="icn ${cls||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]||''}</svg>`;
 applyPrefs();
 let _ac;function beep(){try{_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();const o=_ac.createOscillator(),g=_ac.createGain();o.connect(g);g.connect(_ac.destination);o.frequency.value=880;g.gain.value=0.05;o.start();o.frequency.exponentialRampToValueAtTime(1320,_ac.currentTime+0.09);g.gain.exponentialRampToValueAtTime(0.0001,_ac.currentTime+0.25);o.stop(_ac.currentTime+0.27)}catch(e){}}
@@ -116,7 +120,9 @@ const C_STATES={'United States':['Alabama','Alaska','Arizona','Arkansas','Califo
 async function geoFetchStates(country){try{const r=await fetch('https://countriesnow.space/api/v0.1/countries/states',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({country})});const j=await r.json();return((j.data&&j.data.states)||[]).map(s=>s.name)}catch(e){return[]}}
 async function geoFetchCities(country,state){try{const r=await fetch('https://countriesnow.space/api/v0.1/countries/state/cities',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({country,state})});const j=await r.json();return(j.data||[])}catch(e){return[]}}
 function fillDL(inp,items){if(!inp)return;const dl=document.getElementById(inp.getAttribute('list'));if(dl)dl.innerHTML=items.map(s=>'<option value="'+String(s).replace(/"/g,'&quot;')+'"></option>').join('')}
-const PAY_METHODS=['PayPal','Zelle','Bank Transfer','Payment Link','Crypto','Cash','Website Order (Direct)','Other'];
+let PAY_METHODS=['PayPal','Zelle','Bank Transfer','Payment Link','Crypto','Cash','Website Order (Direct)'];
+/* generic (non-brand) icons for payment methods */
+const PAY_ICON={'PayPal':'wallet','Zelle':'swap','Bank Transfer':'building','Payment Link':'link','Crypto':'bitcoin','Cash':'coin','Website Order (Direct)':'globe','Card':'card','Wise':'swap','UPI':'smartphone','Apple Pay':'smartphone','Cash App':'smartphone','Zelle ':'swap'};
 const COURIERS=['FedEx','UPS','DHL','Blue Dart','DTDC','India Post','Other'];
 const curFlag=code=>{const cc=CUR_CC[code]||'';return cc?`<img class="cflag" src="https://flagcdn.com/24x18/${cc}.png" srcset="https://flagcdn.com/48x36/${cc}.png 2x" width="24" height="18" alt="" loading="lazy">`:'<span class="cflag noflag"></span>'};
 function curBtn(code){return `<button type="button" class="curbtn">${curFlag(code)}<span class="curlbl">${esc(code)}</span><span class="curcar">▾</span></button>`}
@@ -148,7 +154,7 @@ function defaultSettings(){return{
   purities:[{n:'24K',p:99.9,m:'Gold'},{n:'22K',p:91.6,m:'Gold'},{n:'18K',p:75.0,m:'Gold'},{n:'14K',p:58.5,m:'Gold'},{n:'10K',p:41.7,m:'Gold'},{n:'925 Silver',p:92.5,m:'Silver'},{n:'999 Silver',p:99.9,m:'Silver'},{n:'PT950',p:95.0,m:'Platinum'}],
   rates:{Gold:7600,Silver:95,Platinum:3300},
   rateNote:'Rate per gram of fine (pure) metal. Fine weight = Net weight × Purity % ÷ 100, rounded to 3 decimals.',
-  categories:['Ring','Engagement Ring','Band','Pendant','Necklace','Chain','Earrings','Bracelet','Bangle','Watch','Grillz','Loose Diamond','Certified Diamonds','Custom Products','Other'],
+  categories:['Engagement Ring','Wedding Band','Solitaire Ring','Halo Ring','Three-Stone Ring','Eternity Ring','Promise Ring',"Men's Ring",'Necklace','Pendant','Tennis Chain','Cuban Chain','Tennis Bracelet','Bracelet','Bangle','Stud Earrings','Earrings','Grillz','Loose Diamond','Bridal Set','Watch','Custom Products','Other'],
   materials:['Gold','Silver','Platinum','Diamond (Lab-grown)','Diamond (Natural)','Moissanite','Gemstone','Findings','Consumables','Packaging','Finished Goods','Scrap / Residue'],
   departments:['CAD / Design','Material Planning','Casting','Filing & Assembly','Stone Setting','Polishing','Plating','Quality Control','Final Weight / Purity','Packing / Dispatch'],
   routes:{

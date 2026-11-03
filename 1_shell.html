@@ -183,6 +183,27 @@ tbody tr.click:hover td{background:var(--surface2)}
 .fileup-rm:hover{filter:brightness(1.12)}
 .fpro .fileup-prev img,.fpro .fileup-add{width:88px;height:88px}
 .fpro .fileup-add{border-radius:12px}
+/* media (video/audio/file) previews in the reference uploader */
+.fprev-ic{width:88px;height:88px;border-radius:12px;background:var(--panel,#f3ece1);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);overflow:hidden}
+.fprev-ic .icn{width:28px;height:28px}
+.fprev-nm{font-size:9px;line-height:1.15;max-width:76px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.fprev-file{color:var(--muted)}
+/* voice note record button in the uploader */
+.fileup-rec{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;margin-left:8px}
+.fileup-rec .icn{width:16px;height:16px;color:var(--bad)}
+.fileup-rec:hover{border-color:var(--bad);color:var(--bad)}
+.fileup-rec.rec{background:var(--bad);color:#fff;border-color:var(--bad);animation:recpulse 1.1s ease-in-out infinite}
+.fileup-rec.rec .icn{color:#fff}
+@keyframes recpulse{0%,100%{box-shadow:0 0 0 0 rgba(214,55,45,.5)}50%{box-shadow:0 0 0 7px rgba(214,55,45,0)}}
+/* payment-method picker (icon buttons) */
+.paypick{display:flex;flex-wrap:wrap;gap:8px}
+.paybtn{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 14px;border-radius:11px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;transition:.12s}
+.paybtn .icn{width:17px;height:17px;color:var(--muted)}
+.paybtn:hover{border-color:var(--pri);background:var(--panel,#f7f1e8)}
+.paybtn.on{border-color:var(--pri);background:var(--pri);color:var(--pri-ink,#fff);box-shadow:0 2px 8px #0002}
+.paybtn.on .icn{color:var(--pri-ink,#fff)}
+.paybtn.addpay{border-style:dashed;color:var(--muted)}
+.paybtn.addpay .icn{color:var(--muted)}
 /* sticky action footer */
 .modal.fpro .mf{position:sticky;bottom:0;background:var(--surface);box-shadow:0 -2px 10px #0000000f}
 .modal.fpro .mf .btn{padding:9px 16px;font-size:13.5px}
@@ -334,6 +355,11 @@ tbody tr.click:hover td{background:var(--surface2)}
 .stg.cur .sl{color:#fff;font-weight:700}
 .sarr{color:var(--muted);font-size:14px}
 /* ---- payments ---- */
+/* order-list priority row tints — light, work on any theme */
+tr.prio-normal td{background:rgba(39,160,110,.08)}
+tr.prio-high td{background:rgba(231,140,30,.12)}
+tr.prio-urgent td{background:rgba(214,55,45,.12)}
+tbody tr.click.prio-normal:hover td,tbody tr.click.prio-high:hover td,tbody tr.click.prio-urgent:hover td{filter:brightness(.97)}
 .paycard{padding:15px 16px}
 .paycard>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
 .paycard>summary::-webkit-details-marker{display:none}

@@ -269,12 +269,19 @@ function addCategory(selEl){openForm({title:'Add new category',fields:[{k:'name'
   if(!base.includes(name)){base.push(name);try{const r=await api('/api/settings',{settings:{...SET,categories:base}});SET.categories=(r.settings&&r.settings.categories)||base}catch(e){toast(e.message||'Only an admin / accountant can add categories.',true);return false}}
   document.querySelectorAll('select[data-c="category"]').forEach(s=>{if(![...s.options].some(o=>o.value===name)){const before=s.querySelector('option[value="__add__"]');const opt=document.createElement('option');opt.value=name;opt.textContent=name;s.insertBefore(opt,before)}});if(selEl)selEl.value=name;toast('Category "'+name+'" added')}})}
 document.addEventListener('change',e=>{const s=e.target;if(s&&s.matches&&s.matches('select[data-c="category"]')&&s.value==='__add__'){s.value='';addCategory(s)}});
-const OL_COLS=()=>[{k:'desc',l:'Product (short name)',w:170},{k:'category',l:'Category',t:'sel',o:catOpts,w:150},{k:'purity',l:'Metal purity',t:'sel',o:purOpts,w:130},{k:'diamondType',l:'Diamond type',t:'sel',o:['Lab-grown','Moissanite','Natural','Other'],w:120},{k:'qty',l:'Qty',t:'num',w:60},{k:'size',l:'Size',w:60},{k:'movement',l:'Movement (watch)',t:'sel',o:['Japanese movement','Swiss movement','Other'],w:150}];
+const OL_COLS=()=>[{k:'desc',l:'Product (short name)',w:170},{k:'category',l:'Category',t:'sel',o:catOpts,w:150},{k:'purity',l:'Metal purity',t:'sel',o:purOpts,w:130},{k:'diamondType',l:'Diamond type',t:'sel',o:['Lab-grown','Moissanite','Natural','Other'],w:120},{k:'qty',l:'Qty',t:'num',w:60},{k:'size',l:'Size',list:()=>[],w:90},{k:'movement',l:'Movement (watch)',t:'sel',o:['Japanese movement','Swiss movement','Other'],w:150}];
+/* size suggestions based on the chosen category (rings → ring sizes, chains/necklaces → lengths, bracelets → lengths) */
+function sizeOptsFor(cat){const c=(cat||'').toLowerCase();
+  if(/ring|band|bridal/.test(c))return ['4','4.5','5','5.5','6','6.5','7','7.5','8','8.5','9','9.5','10','10.5','11','11.5','12','12.5','13'];
+  if(/necklace|pendant|chain|cuban/.test(c))return ['16"','18"','20"','22"','24"','26"','28"','30"'];
+  if(/bracelet|bangle/.test(c))return ['6"','6.5"','7"','7.5"','8"','8.5"'];
+  if(/loose|diamond/.test(c))return ['0.5 ct','1 ct','1.5 ct','2 ct','2.5 ct','3 ct','4 ct','5 ct'];
+  return []}
 function viewOrders(){
   const tab=TAB.orders||'list';
   let body;
   if(tab==='board'){body=`<div class="board">${ORDER_ST.filter(s=>!['Closed','Cancelled'].includes(s)).map(s=>{const os=S.orders.filter(o=>o.status===s);return `<div class="col ${os.length?'':'zero'}"><h4>${s}<span>${os.length}</span></h4>${os.map(o=>`<div class="tile ${o.dueDate&&daysTo(o.dueDate)<0&&!['Dispatched','Delivered'].includes(s)?'over':''}" onclick="orderDetail(byId('orders','${o.id}'))"><span class="ref">${esc(o.no)}</span> ${o.priority==='Urgent'?'<span class="pill bad">Urgent</span>':''}<div><b>${esc(custName(o.customer))}</b></div><div class="meta"><span>${(o.lines||[]).length} item(s)</span><span>Due ${fdate(o.dueDate)}</span></div></div>`).join('')}</div>`}).join('')}</div>`}
-  else body=filterBar('orders',ORDER_ST)+table([{l:'Order',h:r=>`<span class="ref">${esc(r.no)}</span>${r.extRef?`<div class="note">${esc(r.extRef)}</div>`:''}`},{l:'Date',h:r=>fdate(r.date)},{l:'Customer',h:r=>esc(custName(r.customer))},{l:'Items',n:1,h:r=>(r.lines||[]).length},{l:'Sale value',n:1,h:r=>orderSaleRaw(r)?fcur(orderSaleRaw(r),ordCur(r)):''},{l:'Sales person',h:r=>esc(userName(orderSeller(r)))},{l:'Due',h:r=>{const d=daysTo(r.dueDate);return fdate(r.dueDate)+(d!=null&&d<0&&!['Dispatched','Delivered','Closed','Cancelled'].includes(r.status)?` <span class="pill bad">${-d}d late</span>`:'')}},{l:'Status',h:r=>stPill(r.status)}],applyFil('orders',S.orders).sort((a,b)=>(b.no||'').localeCompare(a.no||'')),{onClick:orderDetail,empty:'No orders yet',emptyHint:'Convert an accepted quotation, or create an order directly.'});
+  else body=filterBar('orders',ORDER_ST)+table([{l:'Order',h:r=>`<span class="ref">${esc(r.no)}</span>${r.extRef?`<div class="note">${esc(r.extRef)}</div>`:''}`},{l:'Date',h:r=>fdate(r.date)},{l:'Customer',h:r=>esc(custName(r.customer))},{l:'Items',n:1,h:r=>(r.lines||[]).length},{l:'Sale value',n:1,h:r=>orderSaleRaw(r)?fcur(orderSaleRaw(r),ordCur(r)):''},{l:'Sales person',h:r=>esc(userName(orderSeller(r)))},{l:'Due',h:r=>{const d=daysTo(r.dueDate);return fdate(r.dueDate)+(d!=null&&d<0&&!['Dispatched','Delivered','Closed','Cancelled'].includes(r.status)?` <span class="pill bad">${-d}d late</span>`:'')}},{l:'Status',h:r=>stPill(r.status)}],applyFil('orders',S.orders).sort((a,b)=>(b.no||'').localeCompare(a.no||'')),{onClick:orderDetail,empty:'No orders yet',emptyHint:'Convert an accepted quotation, or create an order directly.',rowCls:r=>'prio-'+(r.priority||'Normal').toLowerCase().replace(/[^a-z]/g,'')});
   return phead('Orders','One order, many items — each item has its own design, route, QC and dispatch status.',can('orders','edit')?btn('+ New order','onclick="orderForm()"','pri'):'')+tabsHTML('orders',[['list','List'],['board','Status board']],tab)+body}
 function nextOrderNo(){const nums=S.orders.map(o=>{const m=/^IVM0*(\d+)$/.exec(o.no||'');return m?+m[1]:0});return 'IVM'+String(Math.max(0,...nums)+1).padStart(2,'0')}
 /* live pricing summary tiles for the order form — pure display, uses the same formulas as the saved profit sheet */
@@ -323,13 +330,14 @@ function orderForm(o){
     {k:'courierUSD',l:'Courier (USD, auto)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;return fcur(r2(num(v.courierINR)/r),'USD')}},
     {k:'priceSummary',t:'panel'},
     ...(isNew?[{k:'hrPay',l:'Payment & screenshot',t:'hr',icon:ic('card')},
-      {k:'advance',l:'Advance / deposit received now ($)',t:'num',hint:'Optional — add its screenshot below; an admin confirms it'},{k:'payMethod',l:'Payment method (how it came)',t:'sel',o:PAY_METHODS},{k:'payMethodOther',l:'If "Other", specify which method'},{k:'paymentShot',l:'Payment screenshot',t:'file',accept:'image/*',max:1,btn:'Upload payment screenshot',w:2}]:[]),
+      {k:'advance',l:'Advance / deposit received now ($)',t:'num',hint:'Optional — add its screenshot below; an admin confirms it'},{k:'payMethod',l:'Payment method (how it came)',t:'pay'},{k:'paymentShot',l:'Payment screenshot',t:'file',accept:'image/*',max:1,btn:'Upload payment screenshot',w:2}]:[]),
     {k:'hrX',l:'Shipping address',t:'hr',icon:ic('box')},
     {k:'addr1',l:'Address line 1',w:2},{k:'addr2',l:'Address line 2 (optional)',w:2},
     {k:'custCountry',l:'Country',t:'sel',o:()=>COUNTRIES,d:'United States'},{k:'state',l:'State / province',list:()=>(C_STATES['United States']||[]).map(s=>[s,s])},{k:'city',l:'City',list:()=>[]},{k:'zip',l:'ZIP / postal code'},
     {k:'hrE',l:'Additional instructions',t:'hr',icon:ic('note')},
     {k:'gift',l:'Is this a gift?',t:'bool',cl:'Yes, gift'},{k:'followup',l:'Follow-up needed?',t:'bool',cl:'Yes'},{k:'engraving',l:'Engraving (if any)',w:2},
-    {k:'instructions',l:'Special instructions / notes',t:'ta',w:4}],
+    {k:'instructions',l:'Special instructions / notes',t:'ta',w:4},
+    {k:'refMedia',l:'Reference files — photo, video or voice note',t:'file',accept:'image/*,video/*,audio/*',max:10,btn:'Add reference',voice:1,w:4}],
    onChange(cur,form){const sym=curSym(cur.currency||'USD');
      const sumEl=form.querySelector('[data-k="priceSummary"]');if(sumEl)sumEl.innerHTML=orderSummaryHTML(cur,isNew);
      const relabel=(k,base,req)=>{const el=form.querySelector(`[data-k="${k}"]`);if(!el)return;const lab=el.closest('.f').querySelector('label');if(lab)lab.innerHTML=base+' ('+sym+')'+(req?' <span class="rq">*</span>':'')};
@@ -350,8 +358,8 @@ function orderForm(o){
      const adv=num(v.advance);delete v.advance;
      const prodFiles=Array.isArray(v.productFiles)?v.productFiles:[];delete v.productFiles;
      const payShot=(Array.isArray(v.paymentShot)?v.paymentShot:[])[0]||null;delete v.paymentShot;
-     const payMethod=v.payMethod;delete v.payMethod;const payMethodOther=v.payMethodOther;delete v.payMethodOther;
-     const payMethodFinal=(payMethod==='Other'?((payMethodOther||'').trim()||'Other'):payMethod)||'Advance / deposit';
+     const payMethod=v.payMethod;delete v.payMethod;delete v.payMethodOther;
+     const payMethodFinal=payMethod||'Advance / deposit';
      if(prodFiles.length)v.productPhotos=[...(v.productPhotos||[]),...prodFiles];
      if(!v.salesBy)v.salesBy=ME.id;
      v.usdRate=fxRate(v.currency||'USD');

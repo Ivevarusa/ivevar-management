@@ -183,6 +183,27 @@ tbody tr.click:hover td{background:var(--surface2)}
 .fileup-rm:hover{filter:brightness(1.12)}
 .fpro .fileup-prev img,.fpro .fileup-add{width:88px;height:88px}
 .fpro .fileup-add{border-radius:12px}
+/* media (video/audio/file) previews in the reference uploader */
+.fprev-ic{width:88px;height:88px;border-radius:12px;background:var(--panel,#f3ece1);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);overflow:hidden}
+.fprev-ic .icn{width:28px;height:28px}
+.fprev-nm{font-size:9px;line-height:1.15;max-width:76px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.fprev-file{color:var(--muted)}
+/* voice note record button in the uploader */
+.fileup-rec{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;margin-left:8px}
+.fileup-rec .icn{width:16px;height:16px;color:var(--bad)}
+.fileup-rec:hover{border-color:var(--bad);color:var(--bad)}
+.fileup-rec.rec{background:var(--bad);color:#fff;border-color:var(--bad);animation:recpulse 1.1s ease-in-out infinite}
+.fileup-rec.rec .icn{color:#fff}
+@keyframes recpulse{0%,100%{box-shadow:0 0 0 0 rgba(214,55,45,.5)}50%{box-shadow:0 0 0 7px rgba(214,55,45,0)}}
+/* payment-method picker (icon buttons) */
+.paypick{display:flex;flex-wrap:wrap;gap:8px}
+.paybtn{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 14px;border-radius:11px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;transition:.12s}
+.paybtn .icn{width:17px;height:17px;color:var(--muted)}
+.paybtn:hover{border-color:var(--pri);background:var(--panel,#f7f1e8)}
+.paybtn.on{border-color:var(--pri);background:var(--pri);color:var(--pri-ink,#fff);box-shadow:0 2px 8px #0002}
+.paybtn.on .icn{color:var(--pri-ink,#fff)}
+.paybtn.addpay{border-style:dashed;color:var(--muted)}
+.paybtn.addpay .icn{color:var(--muted)}
 /* sticky action footer */
 .modal.fpro .mf{position:sticky;bottom:0;background:var(--surface);box-shadow:0 -2px 10px #0000000f}
 .modal.fpro .mf .btn{padding:9px 16px;font-size:13.5px}
@@ -334,6 +355,11 @@ tbody tr.click:hover td{background:var(--surface2)}
 .stg.cur .sl{color:#fff;font-weight:700}
 .sarr{color:var(--muted);font-size:14px}
 /* ---- payments ---- */
+/* order-list priority row tints — light, work on any theme */
+tr.prio-normal td{background:rgba(39,160,110,.08)}
+tr.prio-high td{background:rgba(231,140,30,.12)}
+tr.prio-urgent td{background:rgba(214,55,45,.12)}
+tbody tr.click.prio-normal:hover td,tbody tr.click.prio-high:hover td,tbody tr.click.prio-urgent:hover td{filter:brightness(.97)}
 .paycard{padding:15px 16px}
 .paycard>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
 .paycard>summary::-webkit-details-marker{display:none}
@@ -614,7 +640,11 @@ const ICONS={
  phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2 4.1 2 2 0 0 1 4 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7A2 2 0 0 1 22 16.9z"/>',
  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
  globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/>',
- clipboard:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1H9z"/><path d="M9 11h6M9 15h4"/>'};
+ clipboard:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1H9z"/><path d="M9 11h6M9 15h4"/>',
+ link:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+ bitcoin:'<circle cx="12" cy="12" r="9"/><path d="M9.8 7.5h4a2 2 0 0 1 0 4h-4m0 0h4.3a2 2 0 0 1 0 4H9.8m0-8V6m3 1.5V6m-3 10v1.5m3-1.5V17M9.8 7.5v8"/>',
+ mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="8" y1="21" x2="16" y2="21"/>',
+ video:'<rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4z"/>'};
 const ic=(name,cls)=>`<svg class="icn ${cls||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]||''}</svg>`;
 applyPrefs();
 let _ac;function beep(){try{_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();const o=_ac.createOscillator(),g=_ac.createGain();o.connect(g);g.connect(_ac.destination);o.frequency.value=880;g.gain.value=0.05;o.start();o.frequency.exponentialRampToValueAtTime(1320,_ac.currentTime+0.09);g.gain.exponentialRampToValueAtTime(0.0001,_ac.currentTime+0.25);o.stop(_ac.currentTime+0.27)}catch(e){}}
@@ -635,7 +665,9 @@ const C_STATES={'United States':['Alabama','Alaska','Arizona','Arkansas','Califo
 async function geoFetchStates(country){try{const r=await fetch('https://countriesnow.space/api/v0.1/countries/states',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({country})});const j=await r.json();return((j.data&&j.data.states)||[]).map(s=>s.name)}catch(e){return[]}}
 async function geoFetchCities(country,state){try{const r=await fetch('https://countriesnow.space/api/v0.1/countries/state/cities',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({country,state})});const j=await r.json();return(j.data||[])}catch(e){return[]}}
 function fillDL(inp,items){if(!inp)return;const dl=document.getElementById(inp.getAttribute('list'));if(dl)dl.innerHTML=items.map(s=>'<option value="'+String(s).replace(/"/g,'&quot;')+'"></option>').join('')}
-const PAY_METHODS=['PayPal','Zelle','Bank Transfer','Payment Link','Crypto','Cash','Website Order (Direct)','Other'];
+let PAY_METHODS=['PayPal','Zelle','Bank Transfer','Payment Link','Crypto','Cash','Website Order (Direct)'];
+/* generic (non-brand) icons for payment methods */
+const PAY_ICON={'PayPal':'wallet','Zelle':'swap','Bank Transfer':'building','Payment Link':'link','Crypto':'bitcoin','Cash':'coin','Website Order (Direct)':'globe','Card':'card','Wise':'swap','UPI':'smartphone','Apple Pay':'smartphone','Cash App':'smartphone','Zelle ':'swap'};
 const COURIERS=['FedEx','UPS','DHL','Blue Dart','DTDC','India Post','Other'];
 const curFlag=code=>{const cc=CUR_CC[code]||'';return cc?`<img class="cflag" src="https://flagcdn.com/24x18/${cc}.png" srcset="https://flagcdn.com/48x36/${cc}.png 2x" width="24" height="18" alt="" loading="lazy">`:'<span class="cflag noflag"></span>'};
 function curBtn(code){return `<button type="button" class="curbtn">${curFlag(code)}<span class="curlbl">${esc(code)}</span><span class="curcar">▾</span></button>`}
@@ -667,7 +699,7 @@ function defaultSettings(){return{
   purities:[{n:'24K',p:99.9,m:'Gold'},{n:'22K',p:91.6,m:'Gold'},{n:'18K',p:75.0,m:'Gold'},{n:'14K',p:58.5,m:'Gold'},{n:'10K',p:41.7,m:'Gold'},{n:'925 Silver',p:92.5,m:'Silver'},{n:'999 Silver',p:99.9,m:'Silver'},{n:'PT950',p:95.0,m:'Platinum'}],
   rates:{Gold:7600,Silver:95,Platinum:3300},
   rateNote:'Rate per gram of fine (pure) metal. Fine weight = Net weight × Purity % ÷ 100, rounded to 3 decimals.',
-  categories:['Ring','Engagement Ring','Band','Pendant','Necklace','Chain','Earrings','Bracelet','Bangle','Watch','Grillz','Loose Diamond','Certified Diamonds','Custom Products','Other'],
+  categories:['Engagement Ring','Wedding Band','Solitaire Ring','Halo Ring','Three-Stone Ring','Eternity Ring','Promise Ring',"Men's Ring",'Necklace','Pendant','Tennis Chain','Cuban Chain','Tennis Bracelet','Bracelet','Bangle','Stud Earrings','Earrings','Grillz','Loose Diamond','Bridal Set','Watch','Custom Products','Other'],
   materials:['Gold','Silver','Platinum','Diamond (Lab-grown)','Diamond (Natural)','Moissanite','Gemstone','Findings','Consumables','Packaging','Finished Goods','Scrap / Residue'],
   departments:['CAD / Design','Material Planning','Casting','Filing & Assembly','Stone Setting','Polishing','Plating','Quality Control','Final Weight / Purity','Packing / Dispatch'],
   routes:{
@@ -954,7 +986,11 @@ const refOpts=(c,lab)=>()=>S[c].filter(x=>x.status!=='Inactive'||true).map(x=>[x
 const empOpts=()=>S.employees.filter(e=>e.status!=='Inactive').map(e=>[e.id,e.name]);
 const purOpts=()=>(SET.purities||[]).map(p=>[p.n,`${p.n} (${p.p}%)`]);
 /* file-upload preview tiles with a remove (✕) control — reused on first render and after add/remove */
-const fileupPrev=files=>(files||[]).map((fl,i)=>`<span class="fprev"><img src="${esc(fl.url)}" alt=""><button type="button" class="fileup-rm" data-i="${i}" title="Remove">✕</button></span>`).join('');
+const fileupPrev=files=>(files||[]).map((fl,i)=>{const s=((fl.type||'')+' '+(fl.name||'')).toLowerCase();
+  const isVid=/video|\.(mp4|mov|webm|m4v|avi)/.test(s),isAud=/audio|\.(mp3|m4a|wav|ogg|aac|webm)/.test(s)&&!isVid,isImg=!isVid&&!isAud&&/image|\.(png|jpe?g|webp|gif|heic|heif)/.test(s);
+  const inner=isImg?`<img src="${esc(fl.url)}" alt="">`:isVid?`<span class="fprev-ic">${ic('video')}</span>`:isAud?`<span class="fprev-ic">${ic('mic')}</span>`:`<span class="fprev-ic">${ic('note')}</span>`;
+  const nm=isImg?'':`<span class="fprev-nm">${esc((fl.name||'file').slice(0,14))}</span>`;
+  return `<span class="fprev ${isImg?'':'fprev-file'}">${inner}${nm}<button type="button" class="fileup-rm" data-i="${i}" title="Remove">✕</button></span>`}).join('');
 
 function inputHTML(f,v,attr){
   const a=`${attr} ${f.req?'required':''} ${f.ro?'readonly tabindex="-1"':''}`;
@@ -963,8 +999,10 @@ function inputHTML(f,v,attr){
   if(t==='ta')return `<textarea ${a}>${esc(v)}</textarea>`;
   if(t==='cur'){const code=v||f.d||'USD';return `<div class="curpick" data-curpick><input type="hidden" ${a} value="${esc(code)}">${curBtn(code)}<div class="curmenu">${CURRENCIES.map(([c,name])=>`<div class="curopt ${c===code?'on':''}" data-code="${esc(c)}">${curFlag(c)}<span>${esc(name)}</span></div>`).join('')}</div></div>`}
   if(t==='ccode'){const code=v||f.d||'+1';const sel=PHONE_CODES.find(p=>p[0]===code)||['+1','us','United States'];return `<div class="curpick ccpick" data-curpick><input type="hidden" ${a} value="${esc(code)}">${ccBtn(sel)}<div class="curmenu"><input class="ccsearch" placeholder="Search country or code…" autocomplete="off">${PHONE_CODES.map(([d,iso,name])=>`<div class="curopt ${d===code&&iso===sel[1]?'on':''}" data-code="${esc(d)}" data-flag="${esc(iso)}" data-lbl="${esc(d)}">${flagImg(iso)}<span>${esc(d)}&nbsp;&nbsp;${esc(name)}</span></div>`).join('')}</div></div>`}
+  if(t==='pay'){const code=v||'';const list=[...new Set([...PAY_METHODS,...((SET.paymentMethods||[]).filter(m=>m&&m!=='Other'))])];const ib=m=>ic(PAY_ICON[m]||'card');
+    return `<div class="curpick paypick" data-curpick><input type="hidden" ${a} value="${esc(code)}"><button type="button" class="curbtn">${code?ib(code)+'<span class="curlbl">'+esc(code)+'</span>':'<span class="curlbl" style="color:var(--muted)">Select…</span>'}<span class="curcar">▾</span></button><div class="curmenu">${list.map(m=>`<div class="curopt ${m===code?'on':''}" data-code="${esc(m)}" data-ic="${esc(PAY_ICON[m]||'card')}">${ib(m)}<span>${esc(m)}</span></div>`).join('')}<div class="curopt payadd" data-code="__addpay__" data-ic="card">${ic('reports')}<span>+ Add new method…</span></div></div></div>`}
   if(t==='sel'||t==='ref'){const ops=optList(f.o);return `<select ${a}><option value="">Select…</option>${ops.map(([k,l])=>`<option value="${esc(k)}" ${String(k)===String(v??'')?'selected':''}>${esc(l)}</option>`).join('')}${v&&!ops.some(([k])=>String(k)===String(v))?`<option value="${esc(v)}" selected>${esc(v)}</option>`:''}</select>`}
-  if(t==='file'){const files=Array.isArray(v)?v:[];const one=f.max===1;return `<div class="fileup" data-fileup><input type="hidden" ${a} value="${esc(JSON.stringify(files))}"><div class="fileup-prev">${fileupPrev(files)}</div><button type="button" class="fileup-add" data-accept="${esc(f.accept||'image/*')}" data-max="${f.max||10}" title="${esc(f.btn||'Upload')}"><span class="fup-ic">＋</span><span>${esc(one?(files.length?'Replace':'Screenshot'):'Add photo')}</span></button></div>`}
+  if(t==='file'){const files=Array.isArray(v)?v:[];const one=f.max===1;return `<div class="fileup" data-fileup><input type="hidden" ${a} value="${esc(JSON.stringify(files))}"><div class="fileup-prev">${fileupPrev(files)}</div><button type="button" class="fileup-add" data-accept="${esc(f.accept||'image/*')}" data-max="${f.max||10}" title="${esc(f.btn||'Upload')}"><span class="fup-ic">＋</span><span>${esc(one?(files.length?'Replace':'Screenshot'):(f.btn||'Add photo'))}</span></button>${f.voice?`<button type="button" class="fileup-rec" title="Record a voice note">${ic('mic')}<span>Record</span></button>`:''}</div>`}
   if(t==='bool')return `<label style="display:flex;gap:6px;align-items:center;padding-top:6px"><input type="checkbox" ${a} ${v?'checked':''} style="width:auto"> ${esc(f.cl||'Yes')}</label>`;
   if(t==='chk'){const ops=optList(f.o);const vs=v||[];return `<div class="chk" ${a}>${ops.map(([k,l])=>`<label><input type="checkbox" value="${esc(k)}" ${vs.includes(k)?'checked':''}> ${esc(l)}</label>`).join('')}</div>`}
   const ty=t==='num'?'number" step="any':t==='date'?'date':t==='dt'?'datetime-local':t==='time'?'time':t==='email'?'email':t==='tel'?'tel':'text';
@@ -1044,11 +1082,11 @@ function askReason(title,label,cb,{required=true,okLabel='Confirm'}={}){
 function confirmBox(title,msg,cb,okLabel='Confirm'){modal({title,body:`<p style="margin:0">${msg}</p>`,foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="cOk">${esc(okLabel)}</button>`,onMount(ov,close){ov.querySelector('#cOk').onclick=async()=>{close();await cb()}}})}
 
 /* table helper */
-function table(cols,rows,{onClick,empty='Nothing here yet.',emptyHint=''}={}){
+function table(cols,rows,{onClick,empty='Nothing here yet.',emptyHint='',rowCls}={}){
   if(!rows.length)return `<div class="tw"><div class="empty"><b>${esc(empty)}</b>${esc(emptyHint)}</div></div>`;
   const id='t'+uid();
   setTimeout(()=>{const t=document.getElementById(id);if(t&&onClick)t.addEventListener('click',e=>{const tr=e.target.closest('tr[data-i]');if(tr&&!e.target.closest('button,a,input,select'))onClick(rows[+tr.dataset.i])})});
-  return `<div class="tw"><table id="${id}"><thead><tr>${cols.map(c=>`<th class="${c.n?'num':''}">${esc(c.l)}</th>`).join('')}</tr></thead><tbody>${rows.map((r,i)=>`<tr data-i="${i}" class="${onClick?'click':''}">${cols.map(c=>`<td class="${c.n?'n':''}">${c.h?c.h(r):esc(r[c.k]??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
+  return `<div class="tw"><table id="${id}"><thead><tr>${cols.map(c=>`<th class="${c.n?'num':''}">${esc(c.l)}</th>`).join('')}</tr></thead><tbody>${rows.map((r,i)=>`<tr data-i="${i}" class="${onClick?'click':''} ${rowCls?esc(rowCls(r)):''}">${cols.map(c=>`<td class="${c.n?'n':''}">${c.h?c.h(r):esc(r[c.k]??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
 
 function phead(title,sub,actions=''){return `<div class="phead"><h1>${esc(T(title))}</h1><div class="act">${actions}</div>${sub?`<div class="sub">${sub}</div>`:''}</div>`}
 const btn=(label,attr,cls='')=>`<button class="btn ${cls}" ${attr}>${label}</button>`;
@@ -1091,21 +1129,38 @@ document.addEventListener('click',e=>{if(!e.target.closest('.search'))$('#sres')
 /* custom currency picker (flag dropdown) */
 document.addEventListener('click',e=>{
   const opt=e.target.closest('.curopt');
-  if(opt){const pick=opt.closest('[data-curpick]');const inp=pick.querySelector('input');const code=opt.dataset.code;inp.value=code;
-    const flag=opt.dataset.flag;const lbl=opt.dataset.lbl||code;
-    const b=pick.querySelector('.curbtn');b.innerHTML=(flag?flagImg(flag):curFlag(code))+'<span class="curlbl">'+esc(lbl)+'</span><span class="curcar">▾</span>';
+  if(opt){const pick=opt.closest('[data-curpick]');const inp=pick.querySelector('input');let code=opt.dataset.code;
+    if(code==='__addpay__'){const nm=(prompt('New payment method name:')||'').trim();pick.classList.remove('open');if(!nm)return;code=nm;if(!PAY_METHODS.includes(nm))PAY_METHODS.push(nm)}
+    inp.value=code;
+    const flag=opt.dataset.flag;const icn=opt.dataset.ic;const lbl=code==='__addpay__'?code:(opt.dataset.lbl||code);
+    const b=pick.querySelector('.curbtn');b.innerHTML=(icn?ic(icn):flag?flagImg(flag):curFlag(code))+'<span class="curlbl">'+esc(lbl)+'</span><span class="curcar">▾</span>';
     pick.querySelectorAll('.curopt').forEach(o=>o.classList.toggle('on',o===opt));pick.classList.remove('open');
     inp.dispatchEvent(new Event('input',{bubbles:true}));inp.dispatchEvent(new Event('change',{bubbles:true}));return}
   const btn=e.target.closest('.curbtn');
   if(btn){e.preventDefault();const pick=btn.closest('[data-curpick]');const open=pick.classList.contains('open');document.querySelectorAll('.curpick.open').forEach(p=>p.classList.remove('open'));if(!open)pick.classList.add('open');return}
   document.querySelectorAll('.curpick.open').forEach(p=>{if(!p.contains(e.target))p.classList.remove('open')})});
 document.addEventListener('input',e=>{if(e.target.classList&&e.target.classList.contains('ccsearch')){const q=e.target.value.trim().toLowerCase();e.target.closest('.curmenu').querySelectorAll('.curopt').forEach(o=>{o.style.display=o.textContent.toLowerCase().includes(q)?'':'none'})}});
+/* order line: category drives the Size suggestions (ring sizes / chain lengths / carats) */
+document.addEventListener('change',e=>{const sel=e.target;if(!sel.matches||!sel.matches('[data-c="category"]'))return;const tr=sel.closest('tr');if(!tr)return;const sz=tr.querySelector('[data-c="size"]');if(!sz||!sz.list||typeof sizeOptsFor!=='function')return;const opts=sizeOptsFor(sel.value);sz.list.innerHTML=opts.map(o=>`<option value="${esc(o)}"></option>`).join('');sz.placeholder=opts.length?(/"/.test(opts[0])?'Length':/ct/.test(opts[0])?'Carat':'Ring size'):''});
 document.addEventListener('click',e=>{const add=e.target.closest('.fileup-add');if(!add)return;e.preventDefault();const wrap=add.closest('[data-fileup]');const hid=wrap.querySelector('input[type=hidden]');const prev=wrap.querySelector('.fileup-prev');const max=+add.dataset.max||10;let cur=[];try{cur=JSON.parse(hid.value||'[]')}catch(x){}
   // single-file field (e.g. payment screenshot): a new pick replaces the old one
   if(max===1&&cur.length){cur=[]}
   const rem=max-cur.length;if(rem<=0){toast('Limit reached — remove some first.',true);return}pickFiles(fs=>{const next=[...cur,...fs];hid.value=JSON.stringify(next);prev.innerHTML=fileupPrev(next);hid.dispatchEvent(new Event('change',{bubbles:true}))},add.dataset.accept||'image/*',rem)});
 /* remove a single uploaded file */
 document.addEventListener('click',e=>{const rm=e.target.closest('.fileup-rm');if(!rm)return;e.preventDefault();const wrap=rm.closest('[data-fileup]');const hid=wrap.querySelector('input[type=hidden]');const prev=wrap.querySelector('.fileup-prev');let cur=[];try{cur=JSON.parse(hid.value||'[]')}catch(x){}cur.splice(+rm.dataset.i,1);hid.value=JSON.stringify(cur);prev.innerHTML=fileupPrev(cur);hid.dispatchEvent(new Event('change',{bubbles:true}))});
+/* voice-note recorder for a reference file field */
+let VREC=null;
+document.addEventListener('click',async e=>{const rec=e.target.closest('.fileup-rec');if(!rec)return;e.preventDefault();
+  if(VREC&&VREC.rec===rec){try{VREC.mr.stop()}catch(x){}return}
+  if(!navigator.mediaDevices||!window.MediaRecorder){toast('Recording is not supported in this browser.',true);return}
+  try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});const mr=new MediaRecorder(stream);const chunks=[];VREC={rec,mr};
+    rec.classList.add('recording');rec.querySelector('span').textContent='Stop';toast('Recording… tap Stop when done');
+    mr.ondataavailable=ev=>{if(ev.data.size)chunks.push(ev.data)};
+    mr.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());rec.classList.remove('recording');rec.querySelector('span').textContent='Record';VREC=null;
+      try{const blob=new Blob(chunks,{type:'audio/webm'});const file=new File([blob],'voice-'+Date.now()+'.webm',{type:'audio/webm'});const up=await uploadFile(file);
+        const wrap=rec.closest('[data-fileup]');const hid=wrap.querySelector('input[type=hidden]');const prev=wrap.querySelector('.fileup-prev');let cur=[];try{cur=JSON.parse(hid.value||'[]')}catch(x){}cur.push(up);hid.value=JSON.stringify(cur);prev.innerHTML=fileupPrev(cur);hid.dispatchEvent(new Event('change',{bubbles:true}));toast('Voice note added ✓')}catch(err){toast('Could not save the recording.',true)}};
+    mr.start()}
+  catch(err){toast('Microphone permission needed to record.',true)}});
 
 function openRecord(c,id){const x=byId(c,id);if(!x)return;const fn={orders:orderDetail,leads:leadDetail,quotes:quoteForm,customers:x=>masterForm('customers',x),suppliers:x=>masterForm('suppliers',x),karigars:karigarDetail,challans:challanDetail,designs:designDetail,jobs:jobDetail,vouchers:voucherView,invoices:x=>accForm('invoices',x),dispatches:dispatchForm,qc:qcForm,pos:poForm,wastage:wastageForm}[c];fn&&fn(x)}
 
@@ -1399,12 +1454,19 @@ function addCategory(selEl){openForm({title:'Add new category',fields:[{k:'name'
   if(!base.includes(name)){base.push(name);try{const r=await api('/api/settings',{settings:{...SET,categories:base}});SET.categories=(r.settings&&r.settings.categories)||base}catch(e){toast(e.message||'Only an admin / accountant can add categories.',true);return false}}
   document.querySelectorAll('select[data-c="category"]').forEach(s=>{if(![...s.options].some(o=>o.value===name)){const before=s.querySelector('option[value="__add__"]');const opt=document.createElement('option');opt.value=name;opt.textContent=name;s.insertBefore(opt,before)}});if(selEl)selEl.value=name;toast('Category "'+name+'" added')}})}
 document.addEventListener('change',e=>{const s=e.target;if(s&&s.matches&&s.matches('select[data-c="category"]')&&s.value==='__add__'){s.value='';addCategory(s)}});
-const OL_COLS=()=>[{k:'desc',l:'Product (short name)',w:170},{k:'category',l:'Category',t:'sel',o:catOpts,w:150},{k:'purity',l:'Metal purity',t:'sel',o:purOpts,w:130},{k:'diamondType',l:'Diamond type',t:'sel',o:['Lab-grown','Moissanite','Natural','Other'],w:120},{k:'qty',l:'Qty',t:'num',w:60},{k:'size',l:'Size',w:60},{k:'movement',l:'Movement (watch)',t:'sel',o:['Japanese movement','Swiss movement','Other'],w:150}];
+const OL_COLS=()=>[{k:'desc',l:'Product (short name)',w:170},{k:'category',l:'Category',t:'sel',o:catOpts,w:150},{k:'purity',l:'Metal purity',t:'sel',o:purOpts,w:130},{k:'diamondType',l:'Diamond type',t:'sel',o:['Lab-grown','Moissanite','Natural','Other'],w:120},{k:'qty',l:'Qty',t:'num',w:60},{k:'size',l:'Size',list:()=>[],w:90},{k:'movement',l:'Movement (watch)',t:'sel',o:['Japanese movement','Swiss movement','Other'],w:150}];
+/* size suggestions based on the chosen category (rings → ring sizes, chains/necklaces → lengths, bracelets → lengths) */
+function sizeOptsFor(cat){const c=(cat||'').toLowerCase();
+  if(/ring|band|bridal/.test(c))return ['4','4.5','5','5.5','6','6.5','7','7.5','8','8.5','9','9.5','10','10.5','11','11.5','12','12.5','13'];
+  if(/necklace|pendant|chain|cuban/.test(c))return ['16"','18"','20"','22"','24"','26"','28"','30"'];
+  if(/bracelet|bangle/.test(c))return ['6"','6.5"','7"','7.5"','8"','8.5"'];
+  if(/loose|diamond/.test(c))return ['0.5 ct','1 ct','1.5 ct','2 ct','2.5 ct','3 ct','4 ct','5 ct'];
+  return []}
 function viewOrders(){
   const tab=TAB.orders||'list';
   let body;
   if(tab==='board'){body=`<div class="board">${ORDER_ST.filter(s=>!['Closed','Cancelled'].includes(s)).map(s=>{const os=S.orders.filter(o=>o.status===s);return `<div class="col ${os.length?'':'zero'}"><h4>${s}<span>${os.length}</span></h4>${os.map(o=>`<div class="tile ${o.dueDate&&daysTo(o.dueDate)<0&&!['Dispatched','Delivered'].includes(s)?'over':''}" onclick="orderDetail(byId('orders','${o.id}'))"><span class="ref">${esc(o.no)}</span> ${o.priority==='Urgent'?'<span class="pill bad">Urgent</span>':''}<div><b>${esc(custName(o.customer))}</b></div><div class="meta"><span>${(o.lines||[]).length} item(s)</span><span>Due ${fdate(o.dueDate)}</span></div></div>`).join('')}</div>`}).join('')}</div>`}
-  else body=filterBar('orders',ORDER_ST)+table([{l:'Order',h:r=>`<span class="ref">${esc(r.no)}</span>${r.extRef?`<div class="note">${esc(r.extRef)}</div>`:''}`},{l:'Date',h:r=>fdate(r.date)},{l:'Customer',h:r=>esc(custName(r.customer))},{l:'Items',n:1,h:r=>(r.lines||[]).length},{l:'Sale value',n:1,h:r=>orderSaleRaw(r)?fcur(orderSaleRaw(r),ordCur(r)):''},{l:'Sales person',h:r=>esc(userName(orderSeller(r)))},{l:'Due',h:r=>{const d=daysTo(r.dueDate);return fdate(r.dueDate)+(d!=null&&d<0&&!['Dispatched','Delivered','Closed','Cancelled'].includes(r.status)?` <span class="pill bad">${-d}d late</span>`:'')}},{l:'Status',h:r=>stPill(r.status)}],applyFil('orders',S.orders).sort((a,b)=>(b.no||'').localeCompare(a.no||'')),{onClick:orderDetail,empty:'No orders yet',emptyHint:'Convert an accepted quotation, or create an order directly.'});
+  else body=filterBar('orders',ORDER_ST)+table([{l:'Order',h:r=>`<span class="ref">${esc(r.no)}</span>${r.extRef?`<div class="note">${esc(r.extRef)}</div>`:''}`},{l:'Date',h:r=>fdate(r.date)},{l:'Customer',h:r=>esc(custName(r.customer))},{l:'Items',n:1,h:r=>(r.lines||[]).length},{l:'Sale value',n:1,h:r=>orderSaleRaw(r)?fcur(orderSaleRaw(r),ordCur(r)):''},{l:'Sales person',h:r=>esc(userName(orderSeller(r)))},{l:'Due',h:r=>{const d=daysTo(r.dueDate);return fdate(r.dueDate)+(d!=null&&d<0&&!['Dispatched','Delivered','Closed','Cancelled'].includes(r.status)?` <span class="pill bad">${-d}d late</span>`:'')}},{l:'Status',h:r=>stPill(r.status)}],applyFil('orders',S.orders).sort((a,b)=>(b.no||'').localeCompare(a.no||'')),{onClick:orderDetail,empty:'No orders yet',emptyHint:'Convert an accepted quotation, or create an order directly.',rowCls:r=>'prio-'+(r.priority||'Normal').toLowerCase().replace(/[^a-z]/g,'')});
   return phead('Orders','One order, many items — each item has its own design, route, QC and dispatch status.',can('orders','edit')?btn('+ New order','onclick="orderForm()"','pri'):'')+tabsHTML('orders',[['list','List'],['board','Status board']],tab)+body}
 function nextOrderNo(){const nums=S.orders.map(o=>{const m=/^IVM0*(\d+)$/.exec(o.no||'');return m?+m[1]:0});return 'IVM'+String(Math.max(0,...nums)+1).padStart(2,'0')}
 /* live pricing summary tiles for the order form — pure display, uses the same formulas as the saved profit sheet */
@@ -1453,13 +1515,14 @@ function orderForm(o){
     {k:'courierUSD',l:'Courier (USD, auto)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;return fcur(r2(num(v.courierINR)/r),'USD')}},
     {k:'priceSummary',t:'panel'},
     ...(isNew?[{k:'hrPay',l:'Payment & screenshot',t:'hr',icon:ic('card')},
-      {k:'advance',l:'Advance / deposit received now ($)',t:'num',hint:'Optional — add its screenshot below; an admin confirms it'},{k:'payMethod',l:'Payment method (how it came)',t:'sel',o:PAY_METHODS},{k:'payMethodOther',l:'If "Other", specify which method'},{k:'paymentShot',l:'Payment screenshot',t:'file',accept:'image/*',max:1,btn:'Upload payment screenshot',w:2}]:[]),
+      {k:'advance',l:'Advance / deposit received now ($)',t:'num',hint:'Optional — add its screenshot below; an admin confirms it'},{k:'payMethod',l:'Payment method (how it came)',t:'pay'},{k:'paymentShot',l:'Payment screenshot',t:'file',accept:'image/*',max:1,btn:'Upload payment screenshot',w:2}]:[]),
     {k:'hrX',l:'Shipping address',t:'hr',icon:ic('box')},
     {k:'addr1',l:'Address line 1',w:2},{k:'addr2',l:'Address line 2 (optional)',w:2},
     {k:'custCountry',l:'Country',t:'sel',o:()=>COUNTRIES,d:'United States'},{k:'state',l:'State / province',list:()=>(C_STATES['United States']||[]).map(s=>[s,s])},{k:'city',l:'City',list:()=>[]},{k:'zip',l:'ZIP / postal code'},
     {k:'hrE',l:'Additional instructions',t:'hr',icon:ic('note')},
     {k:'gift',l:'Is this a gift?',t:'bool',cl:'Yes, gift'},{k:'followup',l:'Follow-up needed?',t:'bool',cl:'Yes'},{k:'engraving',l:'Engraving (if any)',w:2},
-    {k:'instructions',l:'Special instructions / notes',t:'ta',w:4}],
+    {k:'instructions',l:'Special instructions / notes',t:'ta',w:4},
+    {k:'refMedia',l:'Reference files — photo, video or voice note',t:'file',accept:'image/*,video/*,audio/*',max:10,btn:'Add reference',voice:1,w:4}],
    onChange(cur,form){const sym=curSym(cur.currency||'USD');
      const sumEl=form.querySelector('[data-k="priceSummary"]');if(sumEl)sumEl.innerHTML=orderSummaryHTML(cur,isNew);
      const relabel=(k,base,req)=>{const el=form.querySelector(`[data-k="${k}"]`);if(!el)return;const lab=el.closest('.f').querySelector('label');if(lab)lab.innerHTML=base+' ('+sym+')'+(req?' <span class="rq">*</span>':'')};
@@ -1480,8 +1543,8 @@ function orderForm(o){
      const adv=num(v.advance);delete v.advance;
      const prodFiles=Array.isArray(v.productFiles)?v.productFiles:[];delete v.productFiles;
      const payShot=(Array.isArray(v.paymentShot)?v.paymentShot:[])[0]||null;delete v.paymentShot;
-     const payMethod=v.payMethod;delete v.payMethod;const payMethodOther=v.payMethodOther;delete v.payMethodOther;
-     const payMethodFinal=(payMethod==='Other'?((payMethodOther||'').trim()||'Other'):payMethod)||'Advance / deposit';
+     const payMethod=v.payMethod;delete v.payMethod;delete v.payMethodOther;
+     const payMethodFinal=payMethod||'Advance / deposit';
      if(prodFiles.length)v.productPhotos=[...(v.productPhotos||[]),...prodFiles];
      if(!v.salesBy)v.salesBy=ME.id;
      v.usdRate=fxRate(v.currency||'USD');

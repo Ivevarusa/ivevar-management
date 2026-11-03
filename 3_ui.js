@@ -5,7 +5,11 @@ const refOpts=(c,lab)=>()=>S[c].filter(x=>x.status!=='Inactive'||true).map(x=>[x
 const empOpts=()=>S.employees.filter(e=>e.status!=='Inactive').map(e=>[e.id,e.name]);
 const purOpts=()=>(SET.purities||[]).map(p=>[p.n,`${p.n} (${p.p}%)`]);
 /* file-upload preview tiles with a remove (✕) control — reused on first render and after add/remove */
-const fileupPrev=files=>(files||[]).map((fl,i)=>`<span class="fprev"><img src="${esc(fl.url)}" alt=""><button type="button" class="fileup-rm" data-i="${i}" title="Remove">✕</button></span>`).join('');
+const fileupPrev=files=>(files||[]).map((fl,i)=>{const s=((fl.type||'')+' '+(fl.name||'')).toLowerCase();
+  const isVid=/video|\.(mp4|mov|webm|m4v|avi)/.test(s),isAud=/audio|\.(mp3|m4a|wav|ogg|aac|webm)/.test(s)&&!isVid,isImg=!isVid&&!isAud&&/image|\.(png|jpe?g|webp|gif|heic|heif)/.test(s);
+  const inner=isImg?`<img src="${esc(fl.url)}" alt="">`:isVid?`<span class="fprev-ic">${ic('video')}</span>`:isAud?`<span class="fprev-ic">${ic('mic')}</span>`:`<span class="fprev-ic">${ic('note')}</span>`;
+  const nm=isImg?'':`<span class="fprev-nm">${esc((fl.name||'file').slice(0,14))}</span>`;
+  return `<span class="fprev ${isImg?'':'fprev-file'}">${inner}${nm}<button type="button" class="fileup-rm" data-i="${i}" title="Remove">✕</button></span>`}).join('');
 
 function inputHTML(f,v,attr){
   const a=`${attr} ${f.req?'required':''} ${f.ro?'readonly tabindex="-1"':''}`;
@@ -14,8 +18,10 @@ function inputHTML(f,v,attr){
   if(t==='ta')return `<textarea ${a}>${esc(v)}</textarea>`;
   if(t==='cur'){const code=v||f.d||'USD';return `<div class="curpick" data-curpick><input type="hidden" ${a} value="${esc(code)}">${curBtn(code)}<div class="curmenu">${CURRENCIES.map(([c,name])=>`<div class="curopt ${c===code?'on':''}" data-code="${esc(c)}">${curFlag(c)}<span>${esc(name)}</span></div>`).join('')}</div></div>`}
   if(t==='ccode'){const code=v||f.d||'+1';const sel=PHONE_CODES.find(p=>p[0]===code)||['+1','us','United States'];return `<div class="curpick ccpick" data-curpick><input type="hidden" ${a} value="${esc(code)}">${ccBtn(sel)}<div class="curmenu"><input class="ccsearch" placeholder="Search country or code…" autocomplete="off">${PHONE_CODES.map(([d,iso,name])=>`<div class="curopt ${d===code&&iso===sel[1]?'on':''}" data-code="${esc(d)}" data-flag="${esc(iso)}" data-lbl="${esc(d)}">${flagImg(iso)}<span>${esc(d)}&nbsp;&nbsp;${esc(name)}</span></div>`).join('')}</div></div>`}
+  if(t==='pay'){const code=v||'';const list=[...new Set([...PAY_METHODS,...((SET.paymentMethods||[]).filter(m=>m&&m!=='Other'))])];const ib=m=>ic(PAY_ICON[m]||'card');
+    return `<div class="curpick paypick" data-curpick><input type="hidden" ${a} value="${esc(code)}"><button type="button" class="curbtn">${code?ib(code)+'<span class="curlbl">'+esc(code)+'</span>':'<span class="curlbl" style="color:var(--muted)">Select…</span>'}<span class="curcar">▾</span></button><div class="curmenu">${list.map(m=>`<div class="curopt ${m===code?'on':''}" data-code="${esc(m)}" data-ic="${esc(PAY_ICON[m]||'card')}">${ib(m)}<span>${esc(m)}</span></div>`).join('')}<div class="curopt payadd" data-code="__addpay__" data-ic="card">${ic('reports')}<span>+ Add new method…</span></div></div></div>`}
   if(t==='sel'||t==='ref'){const ops=optList(f.o);return `<select ${a}><option value="">Select…</option>${ops.map(([k,l])=>`<option value="${esc(k)}" ${String(k)===String(v??'')?'selected':''}>${esc(l)}</option>`).join('')}${v&&!ops.some(([k])=>String(k)===String(v))?`<option value="${esc(v)}" selected>${esc(v)}</option>`:''}</select>`}
-  if(t==='file'){const files=Array.isArray(v)?v:[];const one=f.max===1;return `<div class="fileup" data-fileup><input type="hidden" ${a} value="${esc(JSON.stringify(files))}"><div class="fileup-prev">${fileupPrev(files)}</div><button type="button" class="fileup-add" data-accept="${esc(f.accept||'image/*')}" data-max="${f.max||10}" title="${esc(f.btn||'Upload')}"><span class="fup-ic">＋</span><span>${esc(one?(files.length?'Replace':'Screenshot'):'Add photo')}</span></button></div>`}
+  if(t==='file'){const files=Array.isArray(v)?v:[];const one=f.max===1;return `<div class="fileup" data-fileup><input type="hidden" ${a} value="${esc(JSON.stringify(files))}"><div class="fileup-prev">${fileupPrev(files)}</div><button type="button" class="fileup-add" data-accept="${esc(f.accept||'image/*')}" data-max="${f.max||10}" title="${esc(f.btn||'Upload')}"><span class="fup-ic">＋</span><span>${esc(one?(files.length?'Replace':'Screenshot'):(f.btn||'Add photo'))}</span></button>${f.voice?`<button type="button" class="fileup-rec" title="Record a voice note">${ic('mic')}<span>Record</span></button>`:''}</div>`}
   if(t==='bool')return `<label style="display:flex;gap:6px;align-items:center;padding-top:6px"><input type="checkbox" ${a} ${v?'checked':''} style="width:auto"> ${esc(f.cl||'Yes')}</label>`;
   if(t==='chk'){const ops=optList(f.o);const vs=v||[];return `<div class="chk" ${a}>${ops.map(([k,l])=>`<label><input type="checkbox" value="${esc(k)}" ${vs.includes(k)?'checked':''}> ${esc(l)}</label>`).join('')}</div>`}
   const ty=t==='num'?'number" step="any':t==='date'?'date':t==='dt'?'datetime-local':t==='time'?'time':t==='email'?'email':t==='tel'?'tel':'text';
@@ -95,11 +101,11 @@ function askReason(title,label,cb,{required=true,okLabel='Confirm'}={}){
 function confirmBox(title,msg,cb,okLabel='Confirm'){modal({title,body:`<p style="margin:0">${msg}</p>`,foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="cOk">${esc(okLabel)}</button>`,onMount(ov,close){ov.querySelector('#cOk').onclick=async()=>{close();await cb()}}})}
 
 /* table helper */
-function table(cols,rows,{onClick,empty='Nothing here yet.',emptyHint=''}={}){
+function table(cols,rows,{onClick,empty='Nothing here yet.',emptyHint='',rowCls}={}){
   if(!rows.length)return `<div class="tw"><div class="empty"><b>${esc(empty)}</b>${esc(emptyHint)}</div></div>`;
   const id='t'+uid();
   setTimeout(()=>{const t=document.getElementById(id);if(t&&onClick)t.addEventListener('click',e=>{const tr=e.target.closest('tr[data-i]');if(tr&&!e.target.closest('button,a,input,select'))onClick(rows[+tr.dataset.i])})});
-  return `<div class="tw"><table id="${id}"><thead><tr>${cols.map(c=>`<th class="${c.n?'num':''}">${esc(c.l)}</th>`).join('')}</tr></thead><tbody>${rows.map((r,i)=>`<tr data-i="${i}" class="${onClick?'click':''}">${cols.map(c=>`<td class="${c.n?'n':''}">${c.h?c.h(r):esc(r[c.k]??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
+  return `<div class="tw"><table id="${id}"><thead><tr>${cols.map(c=>`<th class="${c.n?'num':''}">${esc(c.l)}</th>`).join('')}</tr></thead><tbody>${rows.map((r,i)=>`<tr data-i="${i}" class="${onClick?'click':''} ${rowCls?esc(rowCls(r)):''}">${cols.map(c=>`<td class="${c.n?'n':''}">${c.h?c.h(r):esc(r[c.k]??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
 
 function phead(title,sub,actions=''){return `<div class="phead"><h1>${esc(T(title))}</h1><div class="act">${actions}</div>${sub?`<div class="sub">${sub}</div>`:''}</div>`}
 const btn=(label,attr,cls='')=>`<button class="btn ${cls}" ${attr}>${label}</button>`;
@@ -142,21 +148,38 @@ document.addEventListener('click',e=>{if(!e.target.closest('.search'))$('#sres')
 /* custom currency picker (flag dropdown) */
 document.addEventListener('click',e=>{
   const opt=e.target.closest('.curopt');
-  if(opt){const pick=opt.closest('[data-curpick]');const inp=pick.querySelector('input');const code=opt.dataset.code;inp.value=code;
-    const flag=opt.dataset.flag;const lbl=opt.dataset.lbl||code;
-    const b=pick.querySelector('.curbtn');b.innerHTML=(flag?flagImg(flag):curFlag(code))+'<span class="curlbl">'+esc(lbl)+'</span><span class="curcar">▾</span>';
+  if(opt){const pick=opt.closest('[data-curpick]');const inp=pick.querySelector('input');let code=opt.dataset.code;
+    if(code==='__addpay__'){const nm=(prompt('New payment method name:')||'').trim();pick.classList.remove('open');if(!nm)return;code=nm;if(!PAY_METHODS.includes(nm))PAY_METHODS.push(nm)}
+    inp.value=code;
+    const flag=opt.dataset.flag;const icn=opt.dataset.ic;const lbl=code==='__addpay__'?code:(opt.dataset.lbl||code);
+    const b=pick.querySelector('.curbtn');b.innerHTML=(icn?ic(icn):flag?flagImg(flag):curFlag(code))+'<span class="curlbl">'+esc(lbl)+'</span><span class="curcar">▾</span>';
     pick.querySelectorAll('.curopt').forEach(o=>o.classList.toggle('on',o===opt));pick.classList.remove('open');
     inp.dispatchEvent(new Event('input',{bubbles:true}));inp.dispatchEvent(new Event('change',{bubbles:true}));return}
   const btn=e.target.closest('.curbtn');
   if(btn){e.preventDefault();const pick=btn.closest('[data-curpick]');const open=pick.classList.contains('open');document.querySelectorAll('.curpick.open').forEach(p=>p.classList.remove('open'));if(!open)pick.classList.add('open');return}
   document.querySelectorAll('.curpick.open').forEach(p=>{if(!p.contains(e.target))p.classList.remove('open')})});
 document.addEventListener('input',e=>{if(e.target.classList&&e.target.classList.contains('ccsearch')){const q=e.target.value.trim().toLowerCase();e.target.closest('.curmenu').querySelectorAll('.curopt').forEach(o=>{o.style.display=o.textContent.toLowerCase().includes(q)?'':'none'})}});
+/* order line: category drives the Size suggestions (ring sizes / chain lengths / carats) */
+document.addEventListener('change',e=>{const sel=e.target;if(!sel.matches||!sel.matches('[data-c="category"]'))return;const tr=sel.closest('tr');if(!tr)return;const sz=tr.querySelector('[data-c="size"]');if(!sz||!sz.list||typeof sizeOptsFor!=='function')return;const opts=sizeOptsFor(sel.value);sz.list.innerHTML=opts.map(o=>`<option value="${esc(o)}"></option>`).join('');sz.placeholder=opts.length?(/"/.test(opts[0])?'Length':/ct/.test(opts[0])?'Carat':'Ring size'):''});
 document.addEventListener('click',e=>{const add=e.target.closest('.fileup-add');if(!add)return;e.preventDefault();const wrap=add.closest('[data-fileup]');const hid=wrap.querySelector('input[type=hidden]');const prev=wrap.querySelector('.fileup-prev');const max=+add.dataset.max||10;let cur=[];try{cur=JSON.parse(hid.value||'[]')}catch(x){}
   // single-file field (e.g. payment screenshot): a new pick replaces the old one
   if(max===1&&cur.length){cur=[]}
   const rem=max-cur.length;if(rem<=0){toast('Limit reached — remove some first.',true);return}pickFiles(fs=>{const next=[...cur,...fs];hid.value=JSON.stringify(next);prev.innerHTML=fileupPrev(next);hid.dispatchEvent(new Event('change',{bubbles:true}))},add.dataset.accept||'image/*',rem)});
 /* remove a single uploaded file */
 document.addEventListener('click',e=>{const rm=e.target.closest('.fileup-rm');if(!rm)return;e.preventDefault();const wrap=rm.closest('[data-fileup]');const hid=wrap.querySelector('input[type=hidden]');const prev=wrap.querySelector('.fileup-prev');let cur=[];try{cur=JSON.parse(hid.value||'[]')}catch(x){}cur.splice(+rm.dataset.i,1);hid.value=JSON.stringify(cur);prev.innerHTML=fileupPrev(cur);hid.dispatchEvent(new Event('change',{bubbles:true}))});
+/* voice-note recorder for a reference file field */
+let VREC=null;
+document.addEventListener('click',async e=>{const rec=e.target.closest('.fileup-rec');if(!rec)return;e.preventDefault();
+  if(VREC&&VREC.rec===rec){try{VREC.mr.stop()}catch(x){}return}
+  if(!navigator.mediaDevices||!window.MediaRecorder){toast('Recording is not supported in this browser.',true);return}
+  try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});const mr=new MediaRecorder(stream);const chunks=[];VREC={rec,mr};
+    rec.classList.add('recording');rec.querySelector('span').textContent='Stop';toast('Recording… tap Stop when done');
+    mr.ondataavailable=ev=>{if(ev.data.size)chunks.push(ev.data)};
+    mr.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());rec.classList.remove('recording');rec.querySelector('span').textContent='Record';VREC=null;
+      try{const blob=new Blob(chunks,{type:'audio/webm'});const file=new File([blob],'voice-'+Date.now()+'.webm',{type:'audio/webm'});const up=await uploadFile(file);
+        const wrap=rec.closest('[data-fileup]');const hid=wrap.querySelector('input[type=hidden]');const prev=wrap.querySelector('.fileup-prev');let cur=[];try{cur=JSON.parse(hid.value||'[]')}catch(x){}cur.push(up);hid.value=JSON.stringify(cur);prev.innerHTML=fileupPrev(cur);hid.dispatchEvent(new Event('change',{bubbles:true}));toast('Voice note added ✓')}catch(err){toast('Could not save the recording.',true)}};
+    mr.start()}
+  catch(err){toast('Microphone permission needed to record.',true)}});
 
 function openRecord(c,id){const x=byId(c,id);if(!x)return;const fn={orders:orderDetail,leads:leadDetail,quotes:quoteForm,customers:x=>masterForm('customers',x),suppliers:x=>masterForm('suppliers',x),karigars:karigarDetail,challans:challanDetail,designs:designDetail,jobs:jobDetail,vouchers:voucherView,invoices:x=>accForm('invoices',x),dispatches:dispatchForm,qc:qcForm,pos:poForm,wastage:wastageForm}[c];fn&&fn(x)}
 

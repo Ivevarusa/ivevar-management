@@ -443,8 +443,8 @@ async function handleUsers(env, user, settings, b) {
   return json({ users: results.map(u => { const m = parseMeta(u.meta); return { id: u.id, name: u.name, email: u.email, role: u.role, active: !!u.active, lastLogin: u.last_login, modules: parseMods(u.modules), title: m.title || '', shift: m.shift || null, salary: num(m.salary), phone: m.phone || '', dept: m.dept || '', commPct: num(m.commPct) }; }) });
 }
 
-const ALLOWED_FILE = /^(image\/(png|jpe?g|webp|gif|heic|heif)|application\/(pdf|zip|x-zip-compressed|octet-stream|sla|vnd\.ms-pki\.stl)|model\/.*|text\/plain|text\/csv)$/i;
-const ALLOWED_EXT = /\.(png|jpe?g|webp|gif|heic|heif|pdf|zip|stl|obj|3dm|step|stp|igs|iges|txt|csv|jcd|mgx)$/i;
+const ALLOWED_FILE = /^(image\/(png|jpe?g|webp|gif|heic|heif)|video\/.*|audio\/.*|application\/(pdf|zip|x-zip-compressed|octet-stream|sla|vnd\.ms-pki\.stl)|model\/.*|text\/plain|text\/csv)$/i;
+const ALLOWED_EXT = /\.(png|jpe?g|webp|gif|heic|heif|mp4|mov|webm|m4v|avi|mkv|mp3|m4a|wav|ogg|aac|pdf|zip|stl|obj|3dm|step|stp|igs|iges|txt|csv|jcd|mgx)$/i;
 
 async function route(req, env, ctx) {
   const url = new URL(req.url);
