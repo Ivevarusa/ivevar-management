@@ -119,13 +119,13 @@ function leadDetail(l){
 /* ============ QUOTATIONS (brief §4.4) ============ */
 const QL_COLS=()=>[{k:'desc',l:'Item / description',w:170},{k:'design',l:'Design',t:'ref',o:refOpts('designs',d=>d.code||d.no),w:110},{k:'purity',l:'Purity',t:'sel',o:purOpts,w:110},{k:'qty',l:'Qty',t:'num',w:60},{k:'wt',l:'Net wt (g)',t:'num',w:80},{k:'rate',l:'Rate / g',t:'num',w:80},{k:'making',l:'Making',t:'num',w:80},{k:'stone',l:'Stones',t:'num',w:80},{k:'other',l:'Other',t:'num',w:70},{k:'amt',l:'Amount',calc:lineAmt,fmt:money}];
 /* ---- Jewellery price calculator + Quotation Invoice (auto-prices every metal; Lab-grown & Moissanite) ---- */
-const JRATE_FIELDS=[['gold24','24K Gold / g (₹)'],['silver','Silver / g (₹)'],['platinum','Platinum / g (₹)'],['goldLabor','Gold labour / g (₹)'],['platLabor','Platinum labour / g (₹)'],['shipping','Shipping & box (₹)'],['dollar','USD → ₹ rate'],['labMain','Lab main diamond (₹)'],['labSide','Lab side diamond (₹)'],['moisMain','Moissanite main (₹)'],['moisSide','Moissanite side (₹)']];
+const JRATE_FIELDS=[['gold24','24K Gold / g (₹)'],['silver','Silver / g (₹)'],['platinum','Platinum / g (₹)'],['goldLabor','Gold labour / g (₹)'],['platLabor','Platinum labour / g (₹)'],['shipping','Shipping & box (₹)'],['dollar','USD → ₹ rate'],['labMain','Lab main diamond (₹/ct)'],['labSide','Lab side diamond (₹/ct)'],['moisMain','Moissanite main (₹/ct)'],['moisSide','Moissanite side (₹/ct)']];
 const JQ_COLS=()=>[
   {k:'desc',l:'Product name',w:150},
   {k:'type',l:'Stone',t:'sel',o:[['lab','Lab-grown'],['mois','Moissanite']],w:115},
   {k:'grams',l:'Metal wt (g)',t:'num',w:80},
-  {k:'mainCt',l:'Main stone',t:'num',w:75},
-  {k:'sideCt',l:'Side stone',t:'num',w:75},
+  {k:'mainCt',l:'Main (ct)',t:'num',w:75},
+  {k:'sideCt',l:'Side (ct)',t:'num',w:75},
   {k:'profitPct',l:'Profit %',t:'num',w:65}];
 const jwRatesFrom=v=>{const r={};JRATE_FIELDS.forEach(([k])=>{if(v['r_'+k]!==''&&v['r_'+k]!=null)r[k]=num(v['r_'+k])});return Object.assign({},JW(),r)};
 function jewelMatrixHTML(lines,rates){

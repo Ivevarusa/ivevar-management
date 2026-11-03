@@ -706,13 +706,13 @@ function leadDetail(l){
 /* ============ QUOTATIONS (brief §4.4) ============ */
 const QL_COLS=()=>[{k:'desc',l:'Item / description',w:170},{k:'design',l:'Design',t:'ref',o:refOpts('designs',d=>d.code||d.no),w:110},{k:'purity',l:'Purity',t:'sel',o:purOpts,w:110},{k:'qty',l:'Qty',t:'num',w:60},{k:'wt',l:'Net wt (g)',t:'num',w:80},{k:'rate',l:'Rate / g',t:'num',w:80},{k:'making',l:'Making',t:'num',w:80},{k:'stone',l:'Stones',t:'num',w:80},{k:'other',l:'Other',t:'num',w:70},{k:'amt',l:'Amount',calc:lineAmt,fmt:money}];
 /* ---- Jewellery price calculator + Quotation Invoice (auto-prices every metal; Lab-grown & Moissanite) ---- */
-const JRATE_FIELDS=[['gold24','24K Gold / g (₹)'],['silver','Silver / g (₹)'],['platinum','Platinum / g (₹)'],['goldLabor','Gold labour / g (₹)'],['platLabor','Platinum labour / g (₹)'],['shipping','Shipping & box (₹)'],['dollar','USD → ₹ rate'],['labMain','Lab main diamond (₹)'],['labSide','Lab side diamond (₹)'],['moisMain','Moissanite main (₹)'],['moisSide','Moissanite side (₹)']];
+const JRATE_FIELDS=[['gold24','24K Gold / g (₹)'],['silver','Silver / g (₹)'],['platinum','Platinum / g (₹)'],['goldLabor','Gold labour / g (₹)'],['platLabor','Platinum labour / g (₹)'],['shipping','Shipping & box (₹)'],['dollar','USD → ₹ rate'],['labMain','Lab main diamond (₹/ct)'],['labSide','Lab side diamond (₹/ct)'],['moisMain','Moissanite main (₹/ct)'],['moisSide','Moissanite side (₹/ct)']];
 const JQ_COLS=()=>[
   {k:'desc',l:'Product name',w:150},
   {k:'type',l:'Stone',t:'sel',o:[['lab','Lab-grown'],['mois','Moissanite']],w:115},
   {k:'grams',l:'Metal wt (g)',t:'num',w:80},
-  {k:'mainCt',l:'Main stone',t:'num',w:75},
-  {k:'sideCt',l:'Side stone',t:'num',w:75},
+  {k:'mainCt',l:'Main (ct)',t:'num',w:75},
+  {k:'sideCt',l:'Side (ct)',t:'num',w:75},
   {k:'profitPct',l:'Profit %',t:'num',w:65}];
 const jwRatesFrom=v=>{const r={};JRATE_FIELDS.forEach(([k])=>{if(v['r_'+k]!==''&&v['r_'+k]!=null)r[k]=num(v['r_'+k])});return Object.assign({},JW(),r)};
 function jewelMatrixHTML(lines,rates){
@@ -1716,7 +1716,7 @@ function viewReports(){
    ['Employee commission (this month)','commission',[{l:'Sales executive',k:'name'},{l:'Orders',k:'orders'},{l:'Profit before marketing (INR)',x:r=>r.profit},{l:'Share '+COMMISSION_PCT()+'% (INR)',x:r=>r.share},{l:'Marketing (INR)',x:r=>r.marketing},{l:'Final payable (INR)',x:r=>r.payable}],()=>commissionRows(today().slice(0,7)+'-01')],
    ['Cash book','cashbook',[{l:'No.',k:'no'},{l:'Date',k:'date'},{l:'Type',k:'type'},{l:'Category',k:'category'},{l:'Account',k:'account'},{l:'To account',k:'to'},{l:'Party',k:'party'},{l:'Amount',k:'amount'},{l:'Order',x:r=>orderOf(r.order)?.no},{l:'Reference',k:'ref'},{l:'Note',k:'note'},{l:'Entered by',x:r=>userName(r.createdBy)}],()=>S.cash.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''))]];
   const R2=R.filter(r=>!['jobs','karigar','wastage'].includes(r[1]));R.length=0;R.push(...R2);window._R=R;
-  return phead('Reports','Download any report as Excel or PDF, or view it on screen. Every export is logged.','')+`<div class="grid g3">${R.map((r,i)=>`<div class="card"><h2>${esc(r[0])}</h2><div class="note" style="margin-bottom:10px">${r[3]().length} rows</div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" onclick="showReport(${i})">View</button>${can('reports','view')?`<button class="btn sm pri" onclick="exportXLS(_R[${i}][0],_R[${i}][2],_R[${i}][3]())">Excel</button><button class="btn sm" onclick="exportPDF(_R[${i}][0],_R[${i}][2],_R[${i}][3]())">PDF</button><button class="btn sm" onclick="exportCSV(_R[${i}][1],_R[${i}][2],_R[${i}][3]())">CSV</button>`:''}</div></div>`).join('')}</div>`}
+  return phead('Reports','Download any report as Excel or PDF, or click a report to view it on screen. Every export is logged.','')+`<div class="grid g3">${R.map((r,i)=>`<div class="card repcard" onclick="showReport(${i})" style="cursor:pointer" title="Click to view on screen"><h2>${esc(r[0])}</h2><div class="note" style="margin-bottom:10px">${r[3]().length} rows</div><div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" onclick="showReport(${i})">View</button>${can('reports','view')?`<button class="btn sm pri" onclick="exportXLS(_R[${i}][0],_R[${i}][2],_R[${i}][3]())">Excel</button><button class="btn sm" onclick="exportPDF(_R[${i}][0],_R[${i}][2],_R[${i}][3]())">PDF</button><button class="btn sm" onclick="exportCSV(_R[${i}][1],_R[${i}][2],_R[${i}][3]())">CSV</button>`:''}</div></div>`).join('')}</div>`}
 function showReport(i){const r=window._R[i];modal({title:r[0],wide:1,body:table(r[2].map(c=>({l:c.l,h:x=>{const v=c.x?c.x(x):x[c.k];return esc(typeof v==='number'?fq(v):v??'')}})),r[3]())})}
 
 /* ============ MASTERS VIEW ============ */
