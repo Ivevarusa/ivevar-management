@@ -392,7 +392,8 @@ function viewSettings(){
     <div class="setrow link" onclick="go('chat')"><div><b>Open chat</b><div class="note">Team &amp; customer messages</div></div><span class="chev">›</span></div>
    </div>
    ${admin?`<div class="card setcard"><div class="cap2">🏢 Office</div>
-    <div class="setrow link" onclick="companyForm()"><div><b>Company profile</b><div class="note">Name &amp; address on order slips, USD→INR rate, commission %</div></div><span class="chev">›</span></div>
+    <div class="setrow link" onclick="companyForm()"><div><b>Company profile</b><div class="note">Name &amp; address on order slips, commission %</div></div><span class="chev">›</span></div>
+    <div class="setrow link" onclick="fxForm()"><div><b>💱 Currency rates</b><div class="note">Set USD, AUD, GBP… → ₹ (locked onto each new order)</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="go('setup')"><div><b>Staff &amp; users</b><div class="note">Add team members and set their permissions</div></div><span class="chev">›</span></div>
    </div>`:''}
    <div class="card setcard"><div class="cap2">👤 Account</div>
@@ -427,6 +428,11 @@ function companyForm(){const c=SET.company||{};const fx=SET.fxRates||{};const FX
   const fxRates={...(SET.fxRates||{}),INR:1};FXC.forEach(cc=>{if(num(v['fx_'+cc]))fxRates[cc]=num(v['fx_'+cc])});
   await saveSettings({company,website:(v.website||'').trim(),usdInr:num(v['fx_USD'])||num(SET.usdInr)||88,commissionPct:num(v.commissionPct)||25,fxRates},'company profile');
 }})}
+function fxForm(){const fx=SET.fxRates||{};const FXC=['USD','AUD','GBP','EUR','CAD','AED','SGD','NZD','CHF','JPY','HKD','ZAR','SAR'];
+  openForm({title:'Currency → INR rates',sub:'You set these. Each new order automatically locks the rate for its currency.',wide:1,
+   fields:FXC.map(cc=>({k:'fx_'+cc,l:cc+' → ₹',t:'num'})),
+   value:Object.fromEntries(FXC.map(cc=>['fx_'+cc,num(fx[cc])||''])),
+   async onSave(v){const fxRates={...(SET.fxRates||{}),INR:1};FXC.forEach(cc=>{if(num(v['fx_'+cc]))fxRates[cc]=num(v['fx_'+cc])});await saveSettings({fxRates,usdInr:num(v['fx_USD'])||num(SET.usdInr)||88},'currency rates')}})}
 function setTheme(t){PREF.set('theme',t);applyPrefs();render()}
 function setSizePref(s){PREF.set('size',s);applyPrefs();render()}
 function askPush(){if(!('Notification'in window)){toast('Notifications are not supported here.',true);return}Notification.requestPermission().then(p=>{toast(p==='granted'?'Notifications turned on ✓':'Not allowed');render()})}
