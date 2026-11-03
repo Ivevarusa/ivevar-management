@@ -27,7 +27,14 @@ button,input,select,textarea{font:inherit;color:inherit}
 .brand b{display:block;color:var(--rail-brand);font-size:19px;letter-spacing:.01em}
 .brand small{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--rail-brand);opacity:.85;font-weight:600}
 .nav{padding:8px;display:flex;flex-direction:column;gap:1px}
-.nav a.gtop{margin-top:10px}
+.nav a.gtop{margin-top:6px}
+.railfoot{margin-top:auto;padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid #ffffff14;display:flex;flex-direction:column;gap:9px}
+.rf-user b{color:#fff;font-size:13.5px;display:block;line-height:1.2}
+.rf-sub{font-size:11px;color:var(--rail-ink);opacity:.72;margin-top:3px}
+.rf-lang{width:100%;padding:7px 10px;border-radius:9px;background:#ffffff12;color:var(--rail-ink);border:1px solid #ffffff22;font-size:12.5px;cursor:pointer}
+.rf-links{font-size:12px;color:var(--rail-ink);opacity:.9}
+.rf-links a{color:var(--rail-brand);cursor:pointer;text-decoration:none}
+.rf-links a:hover{text-decoration:underline}
 .nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:14.5px;color:var(--rail-ink);text-decoration:none;font-size:13.5px}
 .nav a:hover{background:#ffffff12;color:#fff}
 .nav a.on{background:var(--accent);color:var(--accent-ink);font-weight:600;box-shadow:0 4px 14px #0005}
@@ -375,6 +382,7 @@ tbody tr.click:hover td{background:var(--surface2)}
   <aside class="rail" id="rail">
     <div class="brand"><span class="blogowrap"><img class="blogo" id="blogo" alt="Ivevar Luxury"></span><small>Office Management</small></div>
     <nav class="nav" id="nav"></nav>
+    <div class="railfoot" id="railfoot"></div>
   </aside>
   <div class="main">
     <header class="top">
