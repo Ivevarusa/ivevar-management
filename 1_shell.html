@@ -334,6 +334,15 @@ tbody tr.click:hover td{background:var(--surface2)}
 .stg.cur .sl{color:#fff;font-weight:700}
 .sarr{color:var(--muted);font-size:14px}
 /* ---- payments ---- */
+.paycard{padding:15px 16px}
+.paycard>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.paycard>summary::-webkit-details-marker{display:none}
+.paycard>summary svg.icn{color:var(--accent);width:17px;height:17px}
+.paysum-h{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:500}
+.paychev{transition:transform .15s;color:var(--muted);font-size:17px;line-height:1}
+.paycard[open] .paychev{transform:rotate(90deg)}
+.paycard[open]>summary{margin-bottom:4px}
+@media(max-width:600px){.paysum-h{display:none}}
 .paylist{display:flex;flex-direction:column;gap:8px;margin-top:8px}
 .payrow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface2)}
 .payrow .thumb img,.payrow img{width:48px;height:48px;object-fit:cover;border-radius:7px;border:1px solid var(--line)}
