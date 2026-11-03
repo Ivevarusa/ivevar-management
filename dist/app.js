@@ -60,7 +60,8 @@ const ICONS={
  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
  alert:'<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17"/>',
  wallet:'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>',
- check:'<path d="M20 6 9 17l-5-5"/>'};
+ check:'<path d="M20 6 9 17l-5-5"/>',
+ print:'<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/>'};
 const ic=(name,cls)=>`<svg class="icn ${cls||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]||''}</svg>`;
 applyPrefs();
 let _ac;function beep(){try{_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();const o=_ac.createOscillator(),g=_ac.createGain();o.connect(g);g.connect(_ac.destination);o.frequency.value=880;g.gain.value=0.05;o.start();o.frequency.exponentialRampToValueAtTime(1320,_ac.currentTime+0.09);g.gain.exponentialRampToValueAtTime(0.0001,_ac.currentTime+0.25);o.stop(_ac.currentTime+0.27)}catch(e){}}
@@ -296,7 +297,7 @@ function orderCost(o){
 
 /* ---------- order stage pipeline (customer-facing; sales can advance) ---------- */
 const ORDER_STAGE=['Order received','Payment confirmed','In production','Quality check','Ready to ship','Dispatched','Delivered'];
-const STAGE_ICON={'Order received':'📥','Payment confirmed':'💳','In production':'🛠','Quality check':'🔍','Ready to ship':'📦','Dispatched':'🚚','Delivered':'✅'};
+const STAGE_ICON={'Order received':ic('receipt'),'Payment confirmed':ic('card'),'In production':ic('production'),'Quality check':ic('qc'),'Ready to ship':ic('box'),'Dispatched':ic('dispatch'),'Delivered':ic('check')};
 const orderStage=o=>o.stage||'Order received';
 const stageIdx=s=>{const i=ORDER_STAGE.indexOf(s);return i<0?0:i};
 
@@ -862,7 +863,7 @@ function orderDetail(o){
     <div><h3>Dispatches</h3>${dsp.length?table([{l:'No.',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Date',h:r=>fdate(r.date)},{l:'Courier',h:r=>esc((r.courier||'')+' '+(r.tracking||''))},{l:'Status',h:r=>stPill(r.status)}],dsp,{onClick:dispatchForm}):'<div class="note">Nothing dispatched yet.</div>'}</div>
    </div>
    <div><h3>History</h3><ul class="timeline">${(o.history||[]).slice().reverse().map(h=>`<li>${h.from?esc(h.from)+' → ':''}<b>${esc(h.to||'')}</b> ${esc(h.note||'')}<small>${fdt(h.ts)} · ${esc(userName(h.by))}</small></li>`).join('')||'<li>Created</li>'}</ul></div>`,
-   foot:[btn('🖨 Order print','data-print'),can('orders','edit')?btn('+ Payment','data-pay'):'',can('orders','edit')?btn('Edit','data-e'):'',can('orders','edit')?btn('Change status','data-st'):'',can('dispatch','edit')?btn('Pack & dispatch','data-dsp'):'',can('orders','approve')&&o.status!=='Closed'?btn('Close order','data-close-o','pri'):''].join(''),
+   foot:[btn(ic('print')+' Order print','data-print'),can('orders','edit')?btn('+ Payment','data-pay'):'',can('orders','edit')?btn('Edit','data-e'):'',can('orders','edit')?btn('Change status','data-st'):'',can('dispatch','edit')?btn('Pack & dispatch','data-dsp'):'',can('orders','approve')&&o.status!=='Closed'?btn('Close order','data-close-o','pri'):''].join(''),
    onMount(ov,close){const b=s=>ov.querySelector(s);
     b('[data-print]').onclick=()=>printOrder(o);
     b('[data-pay]')&&(b('[data-pay]').onclick=()=>{close();addPaymentForm(o)});

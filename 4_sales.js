@@ -315,7 +315,7 @@ function orderDetail(o){
     <div><h3>Dispatches</h3>${dsp.length?table([{l:'No.',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Date',h:r=>fdate(r.date)},{l:'Courier',h:r=>esc((r.courier||'')+' '+(r.tracking||''))},{l:'Status',h:r=>stPill(r.status)}],dsp,{onClick:dispatchForm}):'<div class="note">Nothing dispatched yet.</div>'}</div>
    </div>
    <div><h3>History</h3><ul class="timeline">${(o.history||[]).slice().reverse().map(h=>`<li>${h.from?esc(h.from)+' → ':''}<b>${esc(h.to||'')}</b> ${esc(h.note||'')}<small>${fdt(h.ts)} · ${esc(userName(h.by))}</small></li>`).join('')||'<li>Created</li>'}</ul></div>`,
-   foot:[btn('🖨 Order print','data-print'),can('orders','edit')?btn('+ Payment','data-pay'):'',can('orders','edit')?btn('Edit','data-e'):'',can('orders','edit')?btn('Change status','data-st'):'',can('dispatch','edit')?btn('Pack & dispatch','data-dsp'):'',can('orders','approve')&&o.status!=='Closed'?btn('Close order','data-close-o','pri'):''].join(''),
+   foot:[btn(ic('print')+' Order print','data-print'),can('orders','edit')?btn('+ Payment','data-pay'):'',can('orders','edit')?btn('Edit','data-e'):'',can('orders','edit')?btn('Change status','data-st'):'',can('dispatch','edit')?btn('Pack & dispatch','data-dsp'):'',can('orders','approve')&&o.status!=='Closed'?btn('Close order','data-close-o','pri'):''].join(''),
    onMount(ov,close){const b=s=>ov.querySelector(s);
     b('[data-print]').onclick=()=>printOrder(o);
     b('[data-pay]')&&(b('[data-pay]').onclick=()=>{close();addPaymentForm(o)});
