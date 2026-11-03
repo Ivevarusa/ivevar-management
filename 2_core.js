@@ -109,6 +109,11 @@ function defaultSettings(){return{
   numbering:{leads:'LEAD',quotes:'QTN',orders:'JWL',designs:'DSN',pos:'PO',vouchers:'STK',pieces:'IVP',jobs:'JOB',challans:'CHL',wastage:'WST',qc:'QC',dispatches:'DSP',invoices:'INV',receipts:'RCP',bills:'BIL',payments:'PAY',expenses:'EXP',cash:'CB',tasks:'TSK',customers:'CUS',suppliers:'SUP',karigars:'KAR',employees:'EMP'},
   usdInr:88,
   fxRates:{USD:88,AUD:58,GBP:112,EUR:95,CAD:65,AED:24,SGD:66,NZD:54,CHF:100,JPY:0.59,HKD:11,ZAR:4.8,SAR:23.5,INR:1},
+  // jewellery price-calculator rates (admin-set, in ₹ unless noted) — from the costing sheet
+  jewel:{dollar:92,silver:500,gold24:14000,platinum:6951,goldLabor:1200,platLabor:1400,shipping:5000,labMain:14000,labSide:12000,labCompare:18,moisMain:500,moisSide:500,moisCompare:15,profit:25},
+  invoiceBank:{accountNo:'1210013717271',routing:'055003308',accountType:'Checking',bankName:'Truist Financial Corporation',email:'ivevarjewel@gmail.com'},
+  invoicePayments:['Wire Transfer','Credit / Debit Card','Zelle','Cash App','Apple Pay','Remitly','ACH Transfer','Bitcoin & other crypto'],
+  invoiceTerms:['First, you pay a 50% deposit. Then we start making your product & keep you updated.','Prices exclude U.S. duties, state taxes & import charges, payable by the buyer.','No return or refund after dispatch.','Full payment before dispatch.'],
   pieceMetals:['14K Yellow Gold','14K White Gold','14K Rose Gold','18K Yellow Gold','18K White Gold','18K Rose Gold','10K Gold','925 Silver','Platinum','Gold Vermeil'],
   pieceStones:['Lab-grown Diamond','Natural Diamond','Moissanite','Gemstone','None'],
   courierAgencies:['Malca-Amit','Brinks','Sequel','BVC Logistics','Ferrari Group','Own / direct'],
@@ -323,6 +328,30 @@ const fcur=(v,c)=>curSym(c)+' '+num(v).toLocaleString('en-IN',{minimumFractionDi
 /* both-currency label, e.g. "$ 1,200 · ₹ 1,05,600" */
 function dual(v,c,rate){c=c||'INR';if(c==='INR')return money(v);return `${fcur(v,c)} <span class="note">· ${money(toINRat(v,c,rate||usdRate()))}</span>`}
 const COMMISSION_PCT=()=>num(SET.commissionPct)||25;
+/* ---------- jewellery price calculator (metal + diamonds + labor + shipping → USD × profit) ---------- */
+const JW=()=>Object.assign({dollar:92,silver:500,gold24:14000,platinum:6951,goldLabor:1200,platLabor:1400,shipping:5000,labMain:14000,labSide:12000,labCompare:18,moisMain:500,moisSide:500,moisCompare:15,profit:25},SET.jewel||{});
+const JMETALS=[['silver','925 Silver'],['10k','10K Gold'],['14k','14K Gold'],['18k','18K Gold'],['platinum','Platinum']];
+/* spec: {type:'lab'|'mois', grams, mainCt, sideCt, profitPct}. Returns {metalKey:{cost,sell,compare}} in USD. */
+function jewelCalc(spec){
+  const r=JW();const type=spec.type==='mois'?'mois':'lab';
+  const main=num(spec.mainCt)*(type==='mois'?num(r.moisMain):num(r.labMain));
+  const side=num(spec.sideCt)*(type==='mois'?num(r.moisSide):num(r.labSide));
+  const g=num(spec.grams),ship=num(r.shipping),dollar=num(r.dollar)||92;
+  const profit=spec.profitPct===''||spec.profitPct==null?num(r.profit):num(spec.profitPct);
+  const compare=type==='mois'?num(r.moisCompare):num(r.labCompare);
+  const out={};
+  JMETALS.forEach(([k])=>{
+    let metalCost,labor;
+    if(k==='silver'){metalCost=num(r.silver)*g;labor=0;}
+    else if(k==='platinum'){metalCost=num(r.platinum)*g;labor=g*num(r.platLabor);}
+    else{const pur=k==='10k'?10:k==='14k'?14:18;metalCost=num(r.gold24)*(pur/24)*g;labor=g*num(r.goldLabor);}
+    const totalINR=metalCost+labor+main+side+ship;
+    const cost=totalINR/dollar;
+    out[k]={cost:r2(cost),sell:r2(cost*(1+profit/100)),compare:r2(cost*(1+compare/100))};
+  });
+  out._profit=profit;out._type=type;
+  return out;
+}
 
 /* ---------- payments on an order (manual / screenshot verified) ---------- */
 const orderPayments=o=>Array.isArray(o.payments)?o.payments:[];

@@ -394,6 +394,7 @@ function viewSettings(){
    ${admin?`<div class="card setcard"><div class="cap2">${ic('building')} Office</div>
     <div class="setrow link" onclick="companyForm()"><div><b>Company profile</b><div class="note">Name &amp; address on order slips, commission %</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="fxForm()"><div><b>${ic('swap')} Currency rates</b><div class="note">Set USD, AUD, GBP… → ₹ (locked onto each new order)</div></div><span class="chev">›</span></div>
+    <div class="setrow link" onclick="jewelRatesForm()"><div><b>${ic('gem')} Jewellery rates</b><div class="note">Gold / silver / platinum / diamond rates + labour for the quotation price calculator</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="go('setup')"><div><b>Staff &amp; users</b><div class="note">Add team members and set their permissions</div></div><span class="chev">›</span></div>
    </div>`:''}
    <div class="card setcard"><div class="cap2">${ic('user')} Account</div>
@@ -433,6 +434,16 @@ function fxForm(){const fx=SET.fxRates||{};const FXC=['USD','AUD','GBP','EUR','C
    fields:FXC.map(cc=>({k:'fx_'+cc,l:cc+' → ₹',t:'num'})),
    value:Object.fromEntries(FXC.map(cc=>['fx_'+cc,num(fx[cc])||''])),
    async onSave(v){const fxRates={...(SET.fxRates||{}),INR:1};FXC.forEach(cc=>{if(num(v['fx_'+cc]))fxRates[cc]=num(v['fx_'+cc])});await saveSettings({fxRates,usdInr:num(v['fx_USD'])||num(SET.usdInr)||88},'currency rates')}})}
+function jewelRatesForm(){const j=JW();
+  openForm({title:'Jewellery rates (price calculator)',sub:'All in ₹ unless noted. Used to auto-price quotations across every metal.',wide:1,pro:1,value:j,fields:[
+   {k:'hrM',l:'Metal & dollar',t:'hr',icon:ic('coin')},
+   {k:'dollar',l:'USD → ₹ (dollar rate)',t:'num'},{k:'gold24',l:'24K Gold / gram (₹)',t:'num'},{k:'silver',l:'Silver / gram (₹)',t:'num'},{k:'platinum',l:'Platinum / gram (₹)',t:'num'},
+   {k:'goldLabor',l:'Gold labour / gram (₹)',t:'num'},{k:'platLabor',l:'Platinum labour / gram (₹)',t:'num'},{k:'shipping',l:'Shipping & box (₹)',t:'num'},{k:'profit',l:'Default profit %',t:'num'},
+   {k:'hrL',l:'Lab-grown diamond',t:'hr',icon:ic('gem')},
+   {k:'labMain',l:'Main diamond rate (₹)',t:'num'},{k:'labSide',l:'Side diamond rate (₹)',t:'num'},{k:'labCompare',l:'Compare-at markup %',t:'num'},
+   {k:'hrMo',l:'Moissanite',t:'hr',icon:ic('gem')},
+   {k:'moisMain',l:'Main stone rate (₹)',t:'num'},{k:'moisSide',l:'Side stone rate (₹)',t:'num'},{k:'moisCompare',l:'Compare-at markup %',t:'num'}],
+   async onSave(v){const jewel={};Object.keys(JW()).forEach(k=>{jewel[k]=num(v[k])});await saveSettings({jewel},'jewellery rates')}})}
 function setTheme(t){PREF.set('theme',t);applyPrefs();render()}
 function setSizePref(s){PREF.set('size',s);applyPrefs();render()}
 function askPush(){if(!('Notification'in window)){toast('Notifications are not supported here.',true);return}Notification.requestPermission().then(p=>{toast(p==='granted'?'Notifications turned on ✓':'Not allowed');render()})}
