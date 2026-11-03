@@ -1040,7 +1040,7 @@ function viewOrders(){
   const tab=TAB.orders||'list';
   let body;
   if(tab==='board'){body=`<div class="board">${ORDER_ST.filter(s=>!['Closed','Cancelled'].includes(s)).map(s=>{const os=S.orders.filter(o=>o.status===s);return `<div class="col ${os.length?'':'zero'}"><h4>${s}<span>${os.length}</span></h4>${os.map(o=>`<div class="tile ${o.dueDate&&daysTo(o.dueDate)<0&&!['Dispatched','Delivered'].includes(s)?'over':''}" onclick="orderDetail(byId('orders','${o.id}'))"><span class="ref">${esc(o.no)}</span> ${o.priority==='Urgent'?'<span class="pill bad">Urgent</span>':''}<div><b>${esc(custName(o.customer))}</b></div><div class="meta"><span>${(o.lines||[]).length} item(s)</span><span>Due ${fdate(o.dueDate)}</span></div></div>`).join('')}</div>`}).join('')}</div>`}
-  else body=filterBar('orders',ORDER_ST)+table([{l:'Order',h:r=>`<span class="ref">${esc(r.no)}</span>${r.extRef?`<div class="note">${esc(r.extRef)}</div>`:''}`},{l:'Date',h:r=>fdate(r.date)},{l:'Customer',h:r=>esc(custName(r.customer))},{l:'Items',n:1,h:r=>(r.lines||[]).length},{l:'Sale value',n:1,h:r=>orderSale(r)?money(orderSale(r)):''},{l:'Sales person',h:r=>esc(userName(orderSeller(r)))},{l:'Due',h:r=>{const d=daysTo(r.dueDate);return fdate(r.dueDate)+(d!=null&&d<0&&!['Dispatched','Delivered','Closed','Cancelled'].includes(r.status)?` <span class="pill bad">${-d}d late</span>`:'')}},{l:'Status',h:r=>stPill(r.status)}],applyFil('orders',S.orders).sort((a,b)=>(b.no||'').localeCompare(a.no||'')),{onClick:orderDetail,empty:'No orders yet',emptyHint:'Convert an accepted quotation, or create an order directly.'});
+  else body=filterBar('orders',ORDER_ST)+table([{l:'Order',h:r=>`<span class="ref">${esc(r.no)}</span>${r.extRef?`<div class="note">${esc(r.extRef)}</div>`:''}`},{l:'Date',h:r=>fdate(r.date)},{l:'Customer',h:r=>esc(custName(r.customer))},{l:'Items',n:1,h:r=>(r.lines||[]).length},{l:'Sale value',n:1,h:r=>orderSaleRaw(r)?fcur(orderSaleRaw(r),ordCur(r)):''},{l:'Sales person',h:r=>esc(userName(orderSeller(r)))},{l:'Due',h:r=>{const d=daysTo(r.dueDate);return fdate(r.dueDate)+(d!=null&&d<0&&!['Dispatched','Delivered','Closed','Cancelled'].includes(r.status)?` <span class="pill bad">${-d}d late</span>`:'')}},{l:'Status',h:r=>stPill(r.status)}],applyFil('orders',S.orders).sort((a,b)=>(b.no||'').localeCompare(a.no||'')),{onClick:orderDetail,empty:'No orders yet',emptyHint:'Convert an accepted quotation, or create an order directly.'});
   return phead('Orders','One order, many items — each item has its own design, route, QC and dispatch status.',can('orders','edit')?btn('+ New order','onclick="orderForm()"','pri'):'')+tabsHTML('orders',[['list','List'],['board','Status board']],tab)+body}
 function nextOrderNo(){const nums=S.orders.map(o=>{const m=/^IVM0*(\d+)$/.exec(o.no||'');return m?+m[1]:0});return 'IVM'+String(Math.max(0,...nums)+1).padStart(2,'0')}
 function orderForm(o){
@@ -1092,7 +1092,8 @@ function orderForm(o){
      if(isNew&&adv>0){const pid=uid();const pay={pid,amount:adv,currency:v.currency,method:'Advance / deposit',date:today(),verified:false,by:ME.id,createdAt:nowISO()};
        s=await save('orders',{...s,payments:[pay]},{silent:1,action:'advance payment'});
        toast('Advance '+fcur(adv,v.currency)+' recorded — upload its screenshot');
-       pickFiles(async files=>{const o2=byId('orders',s.id)||s;const ps=orderPayments(o2).map(p=>p.pid===pid?{...p,screenshot:files[0]}:p);await save('orders',{...o2,payments:ps},{silent:1,action:'payment screenshot'});orderDetail(byId('orders',s.id))},'image/*',1);
+       orderDetail(byId('orders',s.id)||s);
+       pickFiles(async files=>{const o2=byId('orders',s.id)||s;const ps=orderPayments(o2).map(p=>p.pid===pid?{...p,screenshot:files[0]}:p);await save('orders',{...o2,payments:ps},{silent:1,action:'payment screenshot'});const op=$('.ov');if(op)op.remove();orderDetail(byId('orders',s.id))},'image/*',1);
        return}
      setTimeout(()=>orderDetail(byId('orders',s.id)||s),60)}})}
 /* --- order stage pipeline (sales can advance) --- */
@@ -1158,9 +1159,9 @@ function orderDetail(o){
       close();askReason('Close order '+o.no,issues.length?'Checks failed: '+issues.join('; ')+'. Reason for closing anyway:':'All checks passed. Closing note:',r=>save('orders',{...o,status:'Closed',closedAt:nowISO(),history:[...(o.history||[]),{ts:nowISO(),by:ME.id,from:o.status,to:'Closed',note:r}]},{action:'close',reason:r}),{required:!!issues.length})})}})}
 
 /* ============ SALES DASHBOARD (staff) ============ */
-let SD_P='month',DASH_CUR='INR';
+let SD_P='month',DASH_CUR='USD';
 function dmoney(inr){if(DASH_CUR==='USD')return fcur(r2(num(inr)/usdRate()),'USD');return money(inr)}
-function curToggle(){return `<div class="seg" style="margin-left:8px">${['INR','USD'].map(c=>`<button class="${DASH_CUR===c?'on':''}" onclick="DASH_CUR='${c}';render()">${c==='INR'?'₹ INR':'$ USD'}</button>`).join('')}</div>`}
+function curToggle(){return `<div class="seg" style="margin-left:8px">${['USD','INR'].map(c=>`<button class="${DASH_CUR===c?'on':''}" onclick="DASH_CUR='${c}';render()">${c==='INR'?'₹ INR':'$ USD'}</button>`).join('')}</div>`}
 function salesTeamTable(){const from=today().slice(0,7)+'-01';const rows=USERS.filter(u=>u.active!==false).map(u=>({u,...salesStats(u.id,from)})).filter(r=>r.count||r.leads||r.u.role!=='admin');
   return table([{l:'Person',h:r=>esc(r.u.name)},{l:'Orders',n:1,k:'count'},{l:'Total sales',n:1,h:r=>money(r.sale)},{l:'Revenue (received)',n:1,h:r=>money(r.rev)},{l:'Profit',n:1,h:r=>`<span style="color:${r.profit<0?'var(--bad)':'var(--good)'}">${money(r.profit)}</span>`},{l:'Leads',n:1,k:'leads'},{l:'Won',n:1,k:'won'},{l:'Conversion',n:1,h:r=>fq(r.conv)+'%'}],rows,{empty:'No sales this month yet'})}
 function viewSalesDash(){
@@ -1326,15 +1327,44 @@ function staffReport(u){
 function commissionRows(from){return USERS.filter(u=>u.active!==false&&u.role!=='admin').map(u=>{const st=salesStats(u.id,from);const profit=r2(st.orders.reduce((a,o)=>a+orderProfit(o),0));const share=r2(st.orders.reduce((a,o)=>a+orderCommission(o),0));const mkt=r2(S.cash.filter(e=>e.type==='Expense'&&/market/i.test(e.category||'')&&e.employee===u.id&&(!from||(e.date||'')>=from)).reduce((a,e)=>a+num(e.amount),0));return{id:u.id,name:u.name,orders:st.count,profit,share,marketing:mkt,payable:r2(share-mkt)}}).filter(r=>r.orders||r.profit)}
 
 /* ============ ORDER PRINT ============ */
-function printOrder(o){const c=byId('customers',o.customer)||{};const cur=o.currency==='INR'?'₹':'$';
-  const rows=(o.lines||[]).map((l,i)=>`<tr><td>${i+1}</td><td><b>${esc(l.desc||'')}</b>${l.free?' (Free gift)':''}${l.category?`<div class="m">${esc(l.category)}</div>`:''}${l.variant?`<div>${esc(l.variant)}</div>`:''}${l.diamondType?`<div class="m">Diamond: ${esc(l.diamondType)}</div>`:''}${l.movement&&l.movement!=='—'?`<div class="m">Movement: ${esc(l.movement)}</div>`:''}${l.sku?`<div class="m">SKU ${esc(l.sku)}</div>`:''}${(l.props||[]).map(x=>`<div class="pp"><b>${esc(x.name)}:</b> ${esc(x.value)}</div>`).join('')}</td><td>${esc(l.metal||l.purity||'')}</td><td>${esc(l.size||'')}</td><td style="text-align:center">${esc(l.qty||1)}</td></tr>`).join('');
-  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(o.extRef||o.no)} · Order print</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:28px;font-size:13px}h1{font-size:20px;margin:0}.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:14px}.big{font-size:22px;font-weight:700}.m{color:#555;font-size:11.5px}table{width:100%;border-collapse:collapse;margin:12px 0}th,td{border:1px solid #999;padding:7px;vertical-align:top;text-align:left}th{background:#eee}.pp{background:#fff3cd;padding:3px 6px;margin-top:4px;border-left:3px solid #e8820c}.box{border:1px solid #999;padding:10px;margin-top:10px;white-space:pre-wrap}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media print{button{display:none}}</style></head><body><button onclick="print()" style="float:right;padding:8px 14px">Print</button>
-  <div class="top"><div><h1>IVEVAR</h1><div class="m">${esc(SET.company.name)} · ${esc(SET.company.phone||'')}</div></div><div style="text-align:right"><div class="big">${esc(o.extRef||o.no)}</div><div class="m">${esc(o.no)} · ${esc(o.channel||'')}</div><div>Order date: <b>${esc(o.date||'')}</b></div><div>Due: <b>${esc(o.dueDate||'')}</b></div></div></div>
-  <div class="grid"><div><b>Customer</b><div>${esc(c.name||'')}</div><div class="m">${esc(o.email||c.email||'')} ${esc(o.phone||c.phone||'')}</div></div><div><b>Ship to</b><div style="white-space:pre-wrap">${esc(o.shipTo||c.address||'')}</div></div></div>
-  <table><thead><tr><th>#</th><th>Product &amp; details</th><th>Metal</th><th>Size</th><th>Qty</th></tr></thead><tbody>${rows}</tbody></table>
-  ${o.instructions?`<div class="box"><b>Customer note / special instructions:</b>\n${esc(o.instructions)}</div>`:''}
-  <div class="grid" style="margin-top:24px"><div>Sent to factory on: ________________</div><div>Received back on: ________________</div><div>QC by: ________________</div><div>Sales person: ${esc(o.salesBy?userName(o.salesBy):(o.channel||''))}</div></div>
-  <script>setTimeout(()=>print(),400)</`+`script></body></html>`;
+function printOrder(o){const c=byId('customers',o.customer)||{};const company=SET.company||{};
+  const cur=ordCur(o);const rate=ordRate(o);const sale=orderSaleRaw(o);const paid=orderPaidRaw(o);const pend=orderPaidPending(o);const bal=r2(sale-paid);
+  const pays=orderPayments(o);const abs=u=>!u?'':(/^https?:/.test(u)?u:location.origin+u);const photos=(o.productPhotos||[]).slice(0,8);
+  const rows=(o.lines||[]).map((l,i)=>`<tr><td>${i+1}</td><td><b>${esc(l.desc||'')}</b>${l.free?' <span class="free">Free gift</span>':''}${l.category?`<div class="m">${esc(l.category)}</div>`:''}${l.diamondType?`<div class="m">Diamond: ${esc(l.diamondType)}</div>`:''}${l.movement&&l.movement!=='—'?`<div class="m">Movement: ${esc(l.movement)}</div>`:''}${l.sku?`<div class="m">SKU ${esc(l.sku)}</div>`:''}${(l.props||[]).map(x=>`<div class="m"><b>${esc(x.name)}:</b> ${esc(x.value)}</div>`).join('')}</td><td>${esc(l.metal||l.purity||'')}</td><td>${esc(l.size||'')}</td><td class="c">${esc(l.qty||1)}</td></tr>`).join('');
+  const payRows=pays.length?pays.map(p=>`<tr><td>${esc(fdate(p.date))}</td><td>${esc(p.method||'')}${p.ref?`<div class="m">Ref: ${esc(p.ref)}</div>`:''}</td><td class="c">${p.verified?'<span class="ok">Verified</span>':'<span class="pend">Unverified</span>'}${p.final?' · Final':''}</td><td class="r">${fcur(p.amount,p.currency||cur)}</td></tr>`).join(''):`<tr><td colspan="4" class="m">No payments recorded yet.</td></tr>`;
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(o.no)} · ${esc(company.name||'Ivevar')}</title><style>
+   *{box-sizing:border-box}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;margin:0;padding:34px 40px;font-size:12.5px;line-height:1.5}
+   .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #141a3a;padding-bottom:16px}
+   .logo{height:44px}.co{font-size:11px;color:#555;margin-top:7px;max-width:270px;line-height:1.5}
+   .doc{text-align:right}.doc .t{font-size:12px;letter-spacing:.18em;color:#999;text-transform:uppercase}.doc .no{font-size:26px;font-weight:800;color:#141a3a;line-height:1.05}.doc .mt{font-size:11.5px;color:#555;margin-top:5px}
+   .pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:10.5px;font-weight:600;background:#eef1f8;color:#141a3a;margin-top:3px}
+   .two{display:flex;gap:30px;margin-top:22px}.two>div{flex:1}
+   .lbl{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#999;margin-bottom:5px}.nm{font-weight:700;font-size:13px}.ad{white-space:pre-wrap;color:#444;font-size:11.5px;margin-top:2px}
+   table{width:100%;border-collapse:collapse;margin-top:10px}
+   th{background:#141a3a;color:#fff;text-align:left;padding:8px 10px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:600}
+   td{border-bottom:1px solid #e3e6ee;padding:9px 10px;vertical-align:top}td.c,th.c{text-align:center}td.r,th.r{text-align:right}
+   .m{color:#777;font-size:10.5px;margin-top:2px}.free{background:#fff3cd;color:#8a6d00;padding:1px 6px;border-radius:4px;font-size:10px}
+   .sec{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#141a3a;font-weight:700;margin:26px 0 2px}
+   .tot{margin-top:14px;margin-left:auto;width:310px}.tot .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee}
+   .tot .bal{font-weight:800;font-size:15px;color:#141a3a;border-bottom:0;border-top:2px solid #141a3a;margin-top:4px;padding-top:9px}
+   .ok{color:#1d8a52;font-weight:600}.pend{color:#c47a0a;font-weight:600}
+   .gal{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}.gal img{width:150px;height:150px;object-fit:cover;border:1px solid #ddd;border-radius:8px}
+   .sign{display:flex;gap:40px;margin-top:40px;color:#444}.sign>div{flex:1}
+   .foot{margin-top:30px;border-top:1px solid #e3e6ee;padding-top:12px;text-align:center;color:#999;font-size:10.5px}
+   @media print{body{padding:10px 0}.noprint{display:none}}</style></head><body>
+   <button class="noprint" onclick="print()" style="float:right;padding:8px 16px;cursor:pointer;border:1px solid #141a3a;background:#141a3a;color:#fff;border-radius:7px">Print / Save PDF</button>
+   <div class="hd"><div><img class="logo" src="${LOGO}" alt="Ivevar Luxury"><div class="co"><b>${esc(company.name||'')}</b><br>${esc(company.address||'')}<br>${esc(company.phone||'')}${company.email?' · '+esc(company.email):''}</div></div>
+     <div class="doc"><div class="t">Order</div><div class="no">${esc(o.no)}</div><div class="mt">${esc(o.channel||'')}<br>Order date: <b>${esc(fdate(o.date)||o.date||'')}</b>${o.dueDate?`<br>Promised: <b>${esc(fdate(o.dueDate))}</b>`:''}<br><span class="pill">${esc(o.status||'')}</span></div></div></div>
+   <div class="two"><div><div class="lbl">Bill to</div><div class="nm">${esc(c.name||'')}</div><div class="ad">${esc(o.email||c.email||'')}${(o.phone||c.phone)?' · '+esc(o.phone||c.phone):''}</div></div>
+     <div><div class="lbl">Ship to</div><div class="ad">${esc(o.shipTo||c.address||'')}</div></div></div>
+   <div class="sec">Items</div><table><thead><tr><th>#</th><th>Product &amp; details</th><th>Metal</th><th>Size</th><th class="c">Qty</th></tr></thead><tbody>${rows}</tbody></table>
+   ${o.instructions?`<div class="sec">Special instructions</div><div class="ad">${esc(o.instructions)}</div>`:''}
+   ${photos.length?`<div class="sec">Product photos</div><div class="gal">${photos.map(f=>`<img src="${esc(abs(f.url))}" alt="">`).join('')}</div>`:''}
+   <div class="sec">Payments (${esc(cur)})</div><table><thead><tr><th>Date</th><th>Method</th><th class="c">Status</th><th class="r">Amount</th></tr></thead><tbody>${payRows}</tbody></table>
+   <div class="tot"><div class="row"><span>Order total</span><b>${fcur(sale,cur)}</b></div><div class="row"><span>Received (verified)</span><b style="color:#1d8a52">${fcur(paid,cur)}</b></div>${pend?`<div class="row"><span>Pending verification</span><b style="color:#c47a0a">${fcur(pend,cur)}</b></div>`:''}<div class="row bal"><span>Balance due</span><span>${fcur(bal,cur)}</span></div></div>
+   <div class="sign"><div>Sales person: <b>${esc(o.salesBy?userName(o.salesBy):(o.channel||''))}</b><br><br>Sent to factory: ________________</div><div>QC by: ________________<br><br>Received back: ________________</div></div>
+   <div class="foot">${esc(company.name||'')} · ${esc(company.address||'')} · ${esc(company.phone||'')}${company.email?' · '+esc(company.email):''}</div>
+   <script>(function(){function pr(){try{print()}catch(e){}}var imgs=[].slice.call(document.images),n=imgs.length,d=0;if(!n){setTimeout(pr,350);return}function chk(){if(++d>=n)setTimeout(pr,250)}imgs.forEach(function(im){if(im.complete)chk();else{im.onload=chk;im.onerror=chk}});setTimeout(pr,3500)})()</`+`script></body></html>`;
   const w=window.open('','_blank');if(!w){toast('Allow pop-ups for this site to print.',true);return}w.document.open();w.document.write(html);w.document.close()}
 
 
