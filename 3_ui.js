@@ -4,15 +4,18 @@ const optList=o=>{const a=typeof o==='function'?o():o||[];return a.map(x=>Array.
 const refOpts=(c,lab)=>()=>S[c].filter(x=>x.status!=='Inactive'||true).map(x=>[x.id,lab?lab(x):((x.no?x.no+' · ':'')+(x.name||x.code||x.title||''))]);
 const empOpts=()=>S.employees.filter(e=>e.status!=='Inactive').map(e=>[e.id,e.name]);
 const purOpts=()=>(SET.purities||[]).map(p=>[p.n,`${p.n} (${p.p}%)`]);
+/* file-upload preview tiles with a remove (✕) control — reused on first render and after add/remove */
+const fileupPrev=files=>(files||[]).map((fl,i)=>`<span class="fprev"><img src="${esc(fl.url)}" alt=""><button type="button" class="fileup-rm" data-i="${i}" title="Remove">✕</button></span>`).join('');
 
 function inputHTML(f,v,attr){
   const a=`${attr} ${f.req?'required':''} ${f.ro?'readonly tabindex="-1"':''}`;
   const t=f.t||'text';
+  if(t==='panel')return `<div class="ordsum" ${attr}></div>`;
   if(t==='ta')return `<textarea ${a}>${esc(v)}</textarea>`;
   if(t==='cur'){const code=v||f.d||'USD';return `<div class="curpick" data-curpick><input type="hidden" ${a} value="${esc(code)}">${curBtn(code)}<div class="curmenu">${CURRENCIES.map(([c,name])=>`<div class="curopt ${c===code?'on':''}" data-code="${esc(c)}">${curFlag(c)}<span>${esc(name)}</span></div>`).join('')}</div></div>`}
   if(t==='ccode'){const code=v||f.d||'+1';const sel=PHONE_CODES.find(p=>p[0]===code)||['+1','us','United States'];return `<div class="curpick ccpick" data-curpick><input type="hidden" ${a} value="${esc(code)}">${ccBtn(sel)}<div class="curmenu"><input class="ccsearch" placeholder="Search country or code…" autocomplete="off">${PHONE_CODES.map(([d,iso,name])=>`<div class="curopt ${d===code&&iso===sel[1]?'on':''}" data-code="${esc(d)}" data-flag="${esc(iso)}" data-lbl="${esc(d)}">${flagImg(iso)}<span>${esc(d)}&nbsp;&nbsp;${esc(name)}</span></div>`).join('')}</div></div>`}
   if(t==='sel'||t==='ref'){const ops=optList(f.o);return `<select ${a}><option value="">Select…</option>${ops.map(([k,l])=>`<option value="${esc(k)}" ${String(k)===String(v??'')?'selected':''}>${esc(l)}</option>`).join('')}${v&&!ops.some(([k])=>String(k)===String(v))?`<option value="${esc(v)}" selected>${esc(v)}</option>`:''}</select>`}
-  if(t==='file'){const files=Array.isArray(v)?v:[];const one=f.max===1;return `<div class="fileup" data-fileup><input type="hidden" ${a} value="${esc(JSON.stringify(files))}"><div class="fileup-prev">${files.map(fl=>`<img src="${esc(fl.url)}" alt="">`).join('')}</div><button type="button" class="fileup-add" data-accept="${esc(f.accept||'image/*')}" data-max="${f.max||10}" title="${esc(f.btn||'Upload')}"><span class="fup-ic">＋</span><span>${esc(one?'Screenshot':'Add photo')}</span></button></div>`}
+  if(t==='file'){const files=Array.isArray(v)?v:[];const one=f.max===1;return `<div class="fileup" data-fileup><input type="hidden" ${a} value="${esc(JSON.stringify(files))}"><div class="fileup-prev">${fileupPrev(files)}</div><button type="button" class="fileup-add" data-accept="${esc(f.accept||'image/*')}" data-max="${f.max||10}" title="${esc(f.btn||'Upload')}"><span class="fup-ic">＋</span><span>${esc(one?(files.length?'Replace':'Screenshot'):'Add photo')}</span></button></div>`}
   if(t==='bool')return `<label style="display:flex;gap:6px;align-items:center;padding-top:6px"><input type="checkbox" ${a} ${v?'checked':''} style="width:auto"> ${esc(f.cl||'Yes')}</label>`;
   if(t==='chk'){const ops=optList(f.o);const vs=v||[];return `<div class="chk" ${a}>${ops.map(([k,l])=>`<label><input type="checkbox" value="${esc(k)}" ${vs.includes(k)?'checked':''}> ${esc(l)}</label>`).join('')}</div>`}
   const ty=t==='num'?'number" step="any':t==='date'?'date':t==='dt'?'datetime-local':t==='time'?'time':t==='email'?'email':t==='tel'?'tel':'text';
@@ -36,9 +39,9 @@ function readForm(root,fields){
     else v[f.k]=el.value});
   return v}
 
-function modal({title,sub,body,foot,wide,onMount}){
+function modal({title,sub,body,foot,wide,pro,onMount}){
   const root=$('#modalRoot');const ov=document.createElement('div');ov.className='ov';
-  ov.innerHTML=`<div class="modal ${wide?'wide':''}" role="dialog" aria-modal="true"><div class="mh"><div><h2>${esc(title)}</h2>${sub?`<div class="note">${sub}</div>`:''}</div><button class="btn sm x" data-close aria-label="Close">✕</button></div><div class="mb">${body}</div>${foot?`<div class="mf">${foot}</div>`:''}</div>`;
+  ov.innerHTML=`<div class="modal ${wide?'wide':''} ${pro?'fpro':''}" role="dialog" aria-modal="true"><div class="mh"><div><h2>${esc(title)}</h2>${sub?`<div class="note">${sub}</div>`:''}</div><button class="btn sm x" data-close aria-label="Close">✕</button></div><div class="mb">${body}</div>${foot?`<div class="mf">${foot}</div>`:''}</div>`;
   root.appendChild(ov);
   const close=()=>ov.remove();
   ov.addEventListener('click',e=>{if(e.target===ov||e.target.closest('[data-close]'))close()});
@@ -48,10 +51,24 @@ function modal({title,sub,body,foot,wide,onMount}){
   return{ov,close}}
 
 /* openForm: generic create/edit with validation, live calc and save */
-function openForm({title,sub,fields,value={},onSave,wide,extra='',onChange,saveLabel}){
+function openForm({title,sub,fields,value={},onSave,wide,pro,extra='',onChange,saveLabel}){
   const v=value||{};
-  const body=`${extra}<form class="form" novalidate>${fields.map(f=>f.t==='lines'?`<div class="f w4"><label>${esc(f.l)}</label>${linesHTML(f,v[f.k])}</div>`:f.t==='hr'?`<div class="f w4"><h3 style="margin:8px 0 0">${esc(f.l)}</h3></div>`:`<div class="f ${f.w?'w'+f.w:''}"><label>${esc(f.l)}${f.req?' <span class="rq">*</span>':''}</label>${inputHTML(f,f.calc?f.calc(v):v[f.k]??f.d??'',`data-k="${f.k}"`)}${f.hint?`<span class="note">${esc(f.hint)}</span>`:''}</div>`).join('')}</form>`;
-  return modal({title,sub,wide,body,foot:`<button class="btn" data-close>${T('Cancel')}</button><button class="btn pri" data-save>${esc(saveLabel||T('Save'))}</button>`,onMount(ov,close){
+  const fieldHTML=f=> f.t==='lines'?`<div class="f w4"><label>${esc(f.l)}</label>${linesHTML(f,v[f.k])}</div>`
+    : f.t==='panel'?`<div class="f w4">${inputHTML(f,'',`data-k="${f.k}"`)}</div>`
+    : f.t==='hr'?`<div class="f w4"><h3 style="margin:8px 0 0">${esc(f.l)}</h3></div>`
+    : `<div class="f ${f.w?'w'+f.w:''}"><label>${esc(f.l)}${f.req?' <span class="rq">*</span>':''}</label>${inputHTML(f,f.calc?f.calc(v):v[f.k]??f.d??'',`data-k="${f.k}"`)}${f.hint?`<span class="note">${esc(f.hint)}</span>`:''}</div>`;
+  let body;
+  if(pro){
+    // group fields into premium section cards, split at each `hr` marker (its label/icon = card header)
+    const cards=[];let cur={title:null,icon:'',items:[]};
+    const flush=()=>{if(cur.items.length||cur.title!=null)cards.push(cur);cur={title:null,icon:'',items:[]}};
+    fields.forEach(f=>{if(f.t==='hr'){flush();cur={title:f.l,icon:f.icon||'',items:[]}}else cur.items.push(f)});
+    flush();
+    body=`${extra}<form class="form-pro" novalidate>${cards.map(c=>`<section class="fcard">${c.title!=null?`<div class="fcard-h">${c.icon?`<span class="fcard-ic">${c.icon}</span>`:''}<h3>${esc(c.title)}</h3></div>`:''}<div class="form">${c.items.map(fieldHTML).join('')}</div></section>`).join('')}</form>`;
+  }else{
+    body=`${extra}<form class="form" novalidate>${fields.map(fieldHTML).join('')}</form>`;
+  }
+  return modal({title,sub,wide,pro,body,foot:`<button class="btn" data-close>${T('Cancel')}</button><button class="btn pri" data-save>${esc(saveLabel||T('Save'))}</button>`,onMount(ov,close){
     const form=ov.querySelector('form');
     const recalc=()=>{const cur={...v,...readForm(form,fields)};
       fields.forEach(f=>{if(f.calc){const el=form.querySelector(`[data-k="${f.k}"]`);if(el)el.value=f.calc(cur)}
@@ -132,7 +149,12 @@ document.addEventListener('click',e=>{
   if(btn){e.preventDefault();const pick=btn.closest('[data-curpick]');const open=pick.classList.contains('open');document.querySelectorAll('.curpick.open').forEach(p=>p.classList.remove('open'));if(!open)pick.classList.add('open');return}
   document.querySelectorAll('.curpick.open').forEach(p=>{if(!p.contains(e.target))p.classList.remove('open')})});
 document.addEventListener('input',e=>{if(e.target.classList&&e.target.classList.contains('ccsearch')){const q=e.target.value.trim().toLowerCase();e.target.closest('.curmenu').querySelectorAll('.curopt').forEach(o=>{o.style.display=o.textContent.toLowerCase().includes(q)?'':'none'})}});
-document.addEventListener('click',e=>{const add=e.target.closest('.fileup-add');if(!add)return;e.preventDefault();const wrap=add.closest('[data-fileup]');const hid=wrap.querySelector('input[type=hidden]');const prev=wrap.querySelector('.fileup-prev');const max=+add.dataset.max||10;let cur=[];try{cur=JSON.parse(hid.value||'[]')}catch(x){}const rem=max-cur.length;if(rem<=0){toast('Limit reached — remove some first.',true);return}pickFiles(fs=>{const next=[...cur,...fs];hid.value=JSON.stringify(next);prev.innerHTML=next.map(fl=>`<img src="${esc(fl.url)}" alt="">`).join('');hid.dispatchEvent(new Event('change',{bubbles:true}))},add.dataset.accept||'image/*',rem)});
+document.addEventListener('click',e=>{const add=e.target.closest('.fileup-add');if(!add)return;e.preventDefault();const wrap=add.closest('[data-fileup]');const hid=wrap.querySelector('input[type=hidden]');const prev=wrap.querySelector('.fileup-prev');const max=+add.dataset.max||10;let cur=[];try{cur=JSON.parse(hid.value||'[]')}catch(x){}
+  // single-file field (e.g. payment screenshot): a new pick replaces the old one
+  if(max===1&&cur.length){cur=[]}
+  const rem=max-cur.length;if(rem<=0){toast('Limit reached — remove some first.',true);return}pickFiles(fs=>{const next=[...cur,...fs];hid.value=JSON.stringify(next);prev.innerHTML=fileupPrev(next);hid.dispatchEvent(new Event('change',{bubbles:true}))},add.dataset.accept||'image/*',rem)});
+/* remove a single uploaded file */
+document.addEventListener('click',e=>{const rm=e.target.closest('.fileup-rm');if(!rm)return;e.preventDefault();const wrap=rm.closest('[data-fileup]');const hid=wrap.querySelector('input[type=hidden]');const prev=wrap.querySelector('.fileup-prev');let cur=[];try{cur=JSON.parse(hid.value||'[]')}catch(x){}cur.splice(+rm.dataset.i,1);hid.value=JSON.stringify(cur);prev.innerHTML=fileupPrev(cur);hid.dispatchEvent(new Event('change',{bubbles:true}))});
 
 function openRecord(c,id){const x=byId(c,id);if(!x)return;const fn={orders:orderDetail,leads:leadDetail,quotes:quoteForm,customers:x=>masterForm('customers',x),suppliers:x=>masterForm('suppliers',x),karigars:karigarDetail,challans:challanDetail,designs:designDetail,jobs:jobDetail,vouchers:voucherView,invoices:x=>accForm('invoices',x),dispatches:dispatchForm,qc:qcForm,pos:poForm,wastage:wastageForm}[c];fn&&fn(x)}
 

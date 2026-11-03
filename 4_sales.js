@@ -179,39 +179,61 @@ function viewOrders(){
   else body=filterBar('orders',ORDER_ST)+table([{l:'Order',h:r=>`<span class="ref">${esc(r.no)}</span>${r.extRef?`<div class="note">${esc(r.extRef)}</div>`:''}`},{l:'Date',h:r=>fdate(r.date)},{l:'Customer',h:r=>esc(custName(r.customer))},{l:'Items',n:1,h:r=>(r.lines||[]).length},{l:'Sale value',n:1,h:r=>orderSaleRaw(r)?fcur(orderSaleRaw(r),ordCur(r)):''},{l:'Sales person',h:r=>esc(userName(orderSeller(r)))},{l:'Due',h:r=>{const d=daysTo(r.dueDate);return fdate(r.dueDate)+(d!=null&&d<0&&!['Dispatched','Delivered','Closed','Cancelled'].includes(r.status)?` <span class="pill bad">${-d}d late</span>`:'')}},{l:'Status',h:r=>stPill(r.status)}],applyFil('orders',S.orders).sort((a,b)=>(b.no||'').localeCompare(a.no||'')),{onClick:orderDetail,empty:'No orders yet',emptyHint:'Convert an accepted quotation, or create an order directly.'});
   return phead('Orders','One order, many items — each item has its own design, route, QC and dispatch status.',can('orders','edit')?btn('+ New order','onclick="orderForm()"','pri'):'')+tabsHTML('orders',[['list','List'],['board','Status board']],tab)+body}
 function nextOrderNo(){const nums=S.orders.map(o=>{const m=/^IVM0*(\d+)$/.exec(o.no||'');return m?+m[1]:0});return 'IVM'+String(Math.max(0,...nums)+1).padStart(2,'0')}
+/* live pricing summary tiles for the order form — pure display, uses the same formulas as the saved profit sheet */
+function orderSummaryHTML(v,isNew){
+  const cur=v.currency||'USD';const r=fxRate(cur)||88;
+  const saleCur=num(v.saleValue);const makeINR=num(v.makingCostINR),courINR=num(v.courierINR);
+  const saleINR=toINRat(saleCur,cur,r);const profitINR=saleINR-makeINR-courINR;
+  const toCur=inr=>cur==='INR'?inr:inr/r;                 // INR → order currency for the headline figure
+  const inr=x=>'₹ '+fq(r2(x));
+  const pct=commPctOf(ME.id);
+  const adv=num(v.advance);const bal=saleCur-adv;
+  const tile=(l,val,sub,cls)=>`<div class="sumtile ${cls||''}"><span class="st-l">${l}</span><span class="st-v">${val}</span>${sub?`<span class="st-s">${sub}</span>`:''}</div>`;
+  let h=tile('Order value',fcur(saleCur,cur),cur!=='INR'?inr(saleINR):'')
+       +tile('Making cost',fcur(r2(toCur(makeINR)),cur),inr(makeINR))
+       +tile('Courier',fcur(r2(toCur(courINR)),cur),inr(courINR))
+       +tile('Profit before mktg',fcur(r2(toCur(profitINR)),cur),inr(profitINR),profitINR<0?'bad':'good');
+  if(pct>0)h+=tile('Sales share '+pct+'%',fcur(r2(toCur(profitINR)*pct/100),cur),'','accent');
+  if(isNew){h+=tile('Advance now',fcur(adv,cur),'');h+=tile('Balance to collect',fcur(r2(bal),cur),'',bal>0.5?'warn':'good')}
+  return h}
 function orderForm(o){
   const isNew=!o;o=o||{currency:'USD',date:today(),status:'Confirmed',priority:'Normal',stage:'Order received',channel:'ivevar.com',lines:[{qty:1}]};
   const cu0=o.customer?byId('customers',o.customer):null;
   const val={...o,custName:o.customer?custName(o.customer):'',custCC:o.phoneCC||'+1',custPhone:o.phoneNum||'',custEmail:o.email||(cu0&&cu0.email)||'',custCountry:o.country||(cu0&&cu0.country)||'United States',addr1:o.addr1||'',addr2:o.addr2||'',city:o.city||'',state:o.state||'',zip:o.zip||''};
   if(val.custCountry==='USA'||val.custCountry==='US')val.custCountry='United States';if(val.custCountry==='UK')val.custCountry='United Kingdom';
-  openForm({title:isNew?'New order':`Edit ${o.no}`,wide:1,value:val,fields:[
-    {k:'productFiles',l:'Product photo(s)',t:'file',accept:'image/*',max:15,btn:'Upload product photo',w:4},
-    {k:'currency',l:'Currency',t:'cur',req:1,d:'USD',w:2},
+  openForm({title:isNew?'New order':`Edit ${o.no}`,wide:1,pro:1,value:val,fields:[
+    {k:'hrCust',l:'Customer information',t:'hr',icon:'👤'},
     {k:'custName',l:'Customer full name',t:'text',list:()=>S.customers.map(c=>[c.name,c.name]),req:1,w:2,hint:'Type the name — a new customer is created automatically if not found'},
+    {k:'custEmail',l:'Customer email',t:'email',w:2},
+    {k:'custCC',l:'Country code',t:'ccode',d:'+1'},{k:'custPhone',l:'WhatsApp / phone number',t:'tel',w:2},
+    {k:'hrOrder',l:'Order details',t:'hr',icon:'🧾'},
     {k:'orderIdDisplay',l:'Order ID (auto)',ro:1,calc:v=>isNew?nextOrderNo():o.no},
-    {k:'custCC',l:'Country code',t:'ccode',d:'+1'},{k:'custPhone',l:'WhatsApp / phone number',t:'tel',w:2},{k:'custEmail',l:'Customer email',t:'email',w:2},
+    {k:'currency',l:'Currency',t:'cur',req:1,d:'USD'},
     {k:'date',l:'Order date',t:'date',req:1},{k:'dueDate',l:'Promised delivery',t:'date',req:1},
     {k:'priority',l:'Priority',t:'sel',o:['Normal','High','Urgent']},{k:'status',l:'Status',t:'sel',o:ORDER_ST,ro:!isNew&&!can('orders','approve')},
     {k:'channel',l:'Sales channel',t:'sel',o:['ivevar.com','ivevar.us','ivevar.in','Etsy','Sales executive']},
+    ...(ME.role==='admin'?[{k:'salesBy',l:'Sales executive',t:'sel',o:()=>USERS.filter(u=>u.active!==false).map(u=>[u.id,u.name]),d:ME.id}]:[]),
+    {k:'hrProd',l:'Product details & photos',t:'hr',icon:'💍'},
+    {k:'productFiles',l:'Product photo(s)',t:'file',accept:'image/*',max:15,btn:'Upload product photo',w:4},
     {k:'lines',l:'Items',t:'lines',cols:OL_COLS()},
-    {k:'hrP',l:'Pricing & profit',t:'hr'},
+    {k:'hrP',l:'Pricing & profit',t:'hr',icon:'💰'},
     {k:'saleValue',l:'Total order value ($)',t:'num',req:1,hint:'What the customer pays'},
     {k:'usdRate',l:'Exchange rate → INR',ro:1,calc:v=>{const c=v.currency||'USD';return c==='INR'?'1.00 (INR)':fxRate(c).toFixed(2)+' ₹ / '+c},hint:'Admin-set rate — locked for this order'},
     {k:'makingCostINR',l:'Making / product cost (₹)',t:'num',hint:'Type in ₹ — auto-converted to USD'},
     {k:'makingUSD',l:'Making cost (USD, auto)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;return fcur(r2(num(v.makingCostINR)/r),'USD')}},
     {k:'courierINR',l:'Courier expense (₹)',t:'num'},
     {k:'courierUSD',l:'Courier (USD, auto)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;return fcur(r2(num(v.courierINR)/r),'USD')}},
-    {k:'profitPreview',l:'Profit before marketing ($)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;const p=toINRat(num(v.saleValue),v.currency||'USD',r)-num(v.makingCostINR)-num(v.courierINR);return fcur(r2(p/r),'USD')}},
-    ...(commPctOf(ME.id)>0?[{k:'sharePreview',l:'Sales share '+commPctOf(ME.id)+'% ($)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;const pct=commPctOf(ME.id);const p=toINRat(num(v.saleValue),v.currency||'USD',r)-num(v.makingCostINR)-num(v.courierINR);return fcur(r2(p*pct/100/r),'USD')}}]:[]),
-    ...(isNew?[{k:'advance',l:'Advance / deposit received now ($)',t:'num',hint:'Optional — add its screenshot below; an admin confirms it'},{k:'payMethod',l:'Payment method (how it came)',t:'sel',o:PAY_METHODS},{k:'payMethodOther',l:'If "Other", specify which method'},{k:'paymentShot',l:'Payment screenshot',t:'file',accept:'image/*',max:1,btn:'Upload payment screenshot',w:2}]:[]),
-    ...(ME.role==='admin'?[{k:'salesBy',l:'Sales executive',t:'sel',o:()=>USERS.filter(u=>u.active!==false).map(u=>[u.id,u.name]),d:ME.id}]:[]),
-    {k:'hrX',l:'Shipping address',t:'hr'},
+    {k:'priceSummary',t:'panel'},
+    ...(isNew?[{k:'hrPay',l:'Payment & screenshot',t:'hr',icon:'💳'},
+      {k:'advance',l:'Advance / deposit received now ($)',t:'num',hint:'Optional — add its screenshot below; an admin confirms it'},{k:'payMethod',l:'Payment method (how it came)',t:'sel',o:PAY_METHODS},{k:'payMethodOther',l:'If "Other", specify which method'},{k:'paymentShot',l:'Payment screenshot',t:'file',accept:'image/*',max:1,btn:'Upload payment screenshot',w:2}]:[]),
+    {k:'hrX',l:'Shipping address',t:'hr',icon:'📦'},
     {k:'addr1',l:'Address line 1',w:2},{k:'addr2',l:'Address line 2 (optional)',w:2},
     {k:'custCountry',l:'Country',t:'sel',o:()=>COUNTRIES,d:'United States'},{k:'state',l:'State / province',list:()=>(C_STATES['United States']||[]).map(s=>[s,s])},{k:'city',l:'City',list:()=>[]},{k:'zip',l:'ZIP / postal code'},
-    {k:'hrE',l:'Extras',t:'hr'},
-    {k:'gift',l:'Is this a gift?',t:'bool',cl:'Yes, gift'},{k:'engraving',l:'Engraving (if any)'},{k:'followup',l:'Follow-up needed?',t:'bool',cl:'Yes'},
-    {k:'instructions',l:'Special instructions / notes',t:'ta',w:2}],
+    {k:'hrE',l:'Additional instructions',t:'hr',icon:'📝'},
+    {k:'gift',l:'Is this a gift?',t:'bool',cl:'Yes, gift'},{k:'followup',l:'Follow-up needed?',t:'bool',cl:'Yes'},{k:'engraving',l:'Engraving (if any)',w:2},
+    {k:'instructions',l:'Special instructions / notes',t:'ta',w:4}],
    onChange(cur,form){const sym=curSym(cur.currency||'USD');
+     const sumEl=form.querySelector('[data-k="priceSummary"]');if(sumEl)sumEl.innerHTML=orderSummaryHTML(cur,isNew);
      const relabel=(k,base,req)=>{const el=form.querySelector(`[data-k="${k}"]`);if(!el)return;const lab=el.closest('.f').querySelector('label');if(lab)lab.innerHTML=base+' ('+sym+')'+(req?' <span class="rq">*</span>':'')};
      relabel('saleValue','Total order value',true);relabel('advance','Advance / deposit received now',false);
      const inpS=form.querySelector('[data-k="state"]');let country=cur.custCountry||'United States';if(country==='USA'||country==='US')country='United States';if(country==='UK')country='United Kingdom';
@@ -226,7 +248,7 @@ function orderForm(o){
      let cust=S.customers.find(c=>(c.name||'').toLowerCase()===cn.toLowerCase());
      if(!cust){try{cust=await save('customers',{name:cn,phone,email:v.custEmail||'',city:v.city||'',country:v.custCountry||'',address:shipTo,source:v.channel||'Website'},{silent:1})}catch(e){return false}}
      v.customer=cust.id;v.email=v.custEmail||v.email||'';v.phone=phone;v.phoneCC=v.custCC||'';v.phoneNum=v.custPhone||'';v.country=v.custCountry||'';v.shipTo=shipTo;
-     delete v.custName;delete v.custEmail;delete v.custPhone;delete v.custCC;delete v.custCountry;delete v.orderIdDisplay;delete v.profitPreview;delete v.sharePreview;delete v.makingUSD;delete v.courierUSD;
+     delete v.custName;delete v.custEmail;delete v.custPhone;delete v.custCC;delete v.custCountry;delete v.orderIdDisplay;delete v.profitPreview;delete v.sharePreview;delete v.priceSummary;delete v.makingUSD;delete v.courierUSD;
      const adv=num(v.advance);delete v.advance;
      const prodFiles=Array.isArray(v.productFiles)?v.productFiles:[];delete v.productFiles;
      const payShot=(Array.isArray(v.paymentShot)?v.paymentShot:[])[0]||null;delete v.paymentShot;
