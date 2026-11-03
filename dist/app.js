@@ -332,8 +332,8 @@ const COMMISSION_PCT=()=>num(SET.commissionPct)||25;
 const JW=()=>Object.assign({dollar:92,silver:500,gold24:14000,platinum:6951,goldLabor:1200,platLabor:1400,shipping:5000,labMain:14000,labSide:12000,labCompare:18,moisMain:500,moisSide:500,moisCompare:15,profit:25},SET.jewel||{});
 const JMETALS=[['silver','925 Silver'],['10k','10K Gold'],['14k','14K Gold'],['18k','18K Gold'],['platinum','Platinum']];
 /* spec: {type:'lab'|'mois', grams, mainCt, sideCt, profitPct}. Returns {metalKey:{cost,sell,compare}} in USD. */
-function jewelCalc(spec){
-  const r=JW();const type=spec.type==='mois'?'mois':'lab';
+function jewelCalc(spec,rates){
+  const r=rates&&typeof rates==='object'?Object.assign({},JW(),rates):JW();const type=spec.type==='mois'?'mois':'lab';
   const main=num(spec.mainCt)*(type==='mois'?num(r.moisMain):num(r.labMain));
   const side=num(spec.sideCt)*(type==='mois'?num(r.moisSide):num(r.labSide));
   const g=num(spec.grams),ship=num(r.shipping),dollar=num(r.dollar)||92;
@@ -705,77 +705,102 @@ function leadDetail(l){
 
 /* ============ QUOTATIONS (brief §4.4) ============ */
 const QL_COLS=()=>[{k:'desc',l:'Item / description',w:170},{k:'design',l:'Design',t:'ref',o:refOpts('designs',d=>d.code||d.no),w:110},{k:'purity',l:'Purity',t:'sel',o:purOpts,w:110},{k:'qty',l:'Qty',t:'num',w:60},{k:'wt',l:'Net wt (g)',t:'num',w:80},{k:'rate',l:'Rate / g',t:'num',w:80},{k:'making',l:'Making',t:'num',w:80},{k:'stone',l:'Stones',t:'num',w:80},{k:'other',l:'Other',t:'num',w:70},{k:'amt',l:'Amount',calc:lineAmt,fmt:money}];
-/* ---- Jewellery price calculator + Quotation Invoice (auto-calculates price for each metal) ---- */
+/* ---- Jewellery price calculator + Quotation Invoice (auto-prices every metal; Lab-grown & Moissanite) ---- */
+const JRATE_FIELDS=[['gold24','24K Gold / g (₹)'],['silver','Silver / g (₹)'],['platinum','Platinum / g (₹)'],['goldLabor','Gold labour / g (₹)'],['platLabor','Platinum labour / g (₹)'],['shipping','Shipping & box (₹)'],['dollar','USD → ₹ rate'],['labMain','Lab main diamond (₹)'],['labSide','Lab side diamond (₹)'],['moisMain','Moissanite main (₹)'],['moisSide','Moissanite side (₹)']];
 const JQ_COLS=()=>[
-  {k:'desc',l:'Product name',w:160},
-  {k:'type',l:'Stone',t:'sel',o:[['lab','Lab-grown'],['mois','Moissanite']],w:120},
-  {k:'grams',l:'Metal wt (g)',t:'num',w:85},
-  {k:'mainCt',l:'Main stone',t:'num',w:80},
-  {k:'sideCt',l:'Side stone',t:'num',w:80},
-  {k:'profitPct',l:'Profit %',t:'num',w:70},
-  {k:'cSilver',l:'925 Silver',calc:r=>jewelCalc(r).silver.sell,fmt:v=>'$ '+fq(v)},
-  {k:'c10',l:'10K Gold',calc:r=>jewelCalc(r)['10k'].sell,fmt:v=>'$ '+fq(v)},
-  {k:'c14',l:'14K Gold',calc:r=>jewelCalc(r)['14k'].sell,fmt:v=>'$ '+fq(v)},
-  {k:'c18',l:'18K Gold',calc:r=>jewelCalc(r)['18k'].sell,fmt:v=>'$ '+fq(v)},
-  {k:'cPlat',l:'Platinum',calc:r=>jewelCalc(r).platinum.sell,fmt:v=>'$ '+fq(v)}];
+  {k:'desc',l:'Product name',w:150},
+  {k:'type',l:'Stone',t:'sel',o:[['lab','Lab-grown'],['mois','Moissanite']],w:115},
+  {k:'grams',l:'Metal wt (g)',t:'num',w:80},
+  {k:'mainCt',l:'Main stone',t:'num',w:75},
+  {k:'sideCt',l:'Side stone',t:'num',w:75},
+  {k:'profitPct',l:'Profit %',t:'num',w:65}];
+const jwRatesFrom=v=>{const r={};JRATE_FIELDS.forEach(([k])=>{if(v['r_'+k]!==''&&v['r_'+k]!=null)r[k]=num(v['r_'+k])});return Object.assign({},JW(),r)};
+function jewelMatrixHTML(lines,rates){
+  const tot={silver:0,'10k':0,'14k':0,'18k':0,platinum:0};let any=false;
+  const rows=(lines||[]).filter(l=>l&&(l.desc||num(l.grams)||num(l.mainCt)||num(l.sideCt))).map((l,i)=>{any=true;const p=jewelCalc(l,rates);JMETALS.forEach(([k])=>tot[k]+=p[k].sell);
+    return `<tr><td>${i+1}</td><td><b>${esc(l.desc||'Product '+(i+1))}</b><div class="note">${l.type==='mois'?'Moissanite':'Lab-grown'} · ${fq(num(l.grams))}g · main ${fq(num(l.mainCt))} · side ${fq(num(l.sideCt))} · +${esc(l.profitPct??JW().profit)}% · cost $${fq(p[JMETALS[3][0]].cost)}</div></td>${JMETALS.map(([k])=>`<td class="n">$ ${fq(p[k].sell)}</td>`).join('')}</tr>`}).join('');
+  if(!any)return '<div class="note" style="padding:6px 2px">Add a product above — the USD price for every metal appears here instantly.</div>';
+  return `<div class="tw"><table><thead><tr><th>#</th><th>Product</th>${JMETALS.map(([k,l])=>`<th class="num">${esc(l)}</th>`).join('')}</tr></thead><tbody>${rows}<tr style="font-weight:700;background:var(--surface2)"><td></td><td>TOTAL (USD)</td>${JMETALS.map(([k])=>`<td class="n">$ ${fq(r2(tot[k]))}</td>`).join('')}</tr></tbody></table></div>`;
+}
 function jewelQuoteForm(q){
   const isNew=!q;q=q||{date:today(),calc:1,lines:[{type:'lab',profitPct:JW().profit}]};
+  const jr=Object.assign({},JW(),q.rates||{});
   const val={...q,custName:q.customer?custName(q.customer):(q.custName||'')};
-  openForm({title:isNew?'New quotation invoice (auto-price)':`Edit ${q.no}`,wide:1,pro:1,value:val,fields:[
-    {k:'hrC',l:'Customer & invoice',t:'hr',icon:ic('user')},
+  JRATE_FIELDS.forEach(([k])=>val['r_'+k]=num(jr[k]));
+  openForm({title:isNew?'New quotation · auto-price calculator':`Edit ${q.no}`,wide:1,pro:1,value:val,fields:[
+    {k:'hrC',l:'Customer & details',t:'hr',icon:ic('user')},
     {k:'custName',l:'Customer name',t:'text',list:()=>S.customers.map(c=>[c.name,c.name]),req:1,w:2,hint:'A new customer is created automatically if not found'},
-    {k:'invTitle',l:'Quotation title',w:2,hint:'e.g. Sun lab-diamond pendant'},
-    {k:'date',l:'Date',t:'date',d:today()},{k:'validTill',l:'Valid till',t:'date'},
-    {k:'hrI',l:'Products — price auto-calculates for every metal',t:'hr',icon:ic('gem')},
+    {k:'invTitle',l:'Quotation title',hint:'e.g. Sun lab-diamond pendant'},
+    {k:'date',l:'Date',t:'date',d:today()},
+    {k:'hrR',l:'Rates (₹) — edit any box to re-price instantly',t:'hr',icon:ic('coin')},
+    ...JRATE_FIELDS.map(([k,l])=>({k:'r_'+k,l,t:'num'})),
+    {k:'hrP',l:'Products — Lab-grown or Moissanite, priced for every metal',t:'hr',icon:ic('gem')},
     {k:'lines',l:'Products',t:'lines',cols:JQ_COLS()},
+    {k:'matrix',t:'panel'},
     {k:'note',l:'Note to customer',t:'ta',w:4}],
+   onChange(cur,form){const el=form.querySelector('[data-k="matrix"]');if(el)el.innerHTML=jewelMatrixHTML(cur.lines,jwRatesFrom(cur));},
    async onSave(v){
      const cn=(v.custName||'').trim();if(!cn){toast('Enter the customer name.',true);return false}
      if(!(v.lines||[]).length){toast('Add at least one product.',true);return false}
      let cust=S.customers.find(c=>(c.name||'').toLowerCase()===cn.toLowerCase());
      if(!cust){try{cust=await save('customers',{name:cn,source:'Quotation'},{silent:1})}catch(e){return false}}
-     v.customer=cust.id;delete v.custName;v.calc=1;v.status=q.status||'Draft';v.version=q.version||1;
+     const rates={};JRATE_FIELDS.forEach(([k])=>{rates[k]=num(v['r_'+k]);delete v['r_'+k]});
+     v.customer=cust.id;delete v.custName;v.calc=1;v.rates=rates;v.status=q.status||'Draft';v.version=q.version||1;
      const s=await save('quotes',v);setTimeout(()=>jewelQuoteView(byId('quotes',s.id)||s),50)}})}
 function jewelQuoteView(q){
-  const c=byId('customers',q.customer)||{};const lines=q.lines||[];
+  const rates=Object.assign({},JW(),q.rates||{});const lines=q.lines||[];
   const tot={silver:0,'10k':0,'14k':0,'18k':0,platinum:0};
-  const rows=lines.map((l,i)=>{const p=jewelCalc(l);JMETALS.forEach(([k])=>tot[k]+=p[k].sell);
-    return `<tr><td>${i+1}</td><td><b>${esc(l.desc||'')}</b><div class="note">${l.type==='mois'?'Moissanite':'Lab-grown'} · ${esc(l.grams||0)}g · main ${esc(l.mainCt||0)} · side ${esc(l.sideCt||0)} · +${esc(l.profitPct??JW().profit)}%</div></td>${JMETALS.map(([k])=>`<td class="n">$ ${fq(p[k].sell)}</td>`).join('')}</tr>`}).join('');
-  modal({title:`${q.no} · Quotation invoice`,sub:`${esc(custName(q.customer))}${q.invTitle?' · '+esc(q.invTitle):''}`,wide:1,body:`
+  const rows=lines.map((l,i)=>{const p=jewelCalc(l,rates);JMETALS.forEach(([k])=>tot[k]+=p[k].sell);
+    return `<tr><td>${i+1}</td><td><b>${esc(l.desc||'')}</b><div class="note">${l.type==='mois'?'Moissanite':'Lab-grown'} · ${fq(num(l.grams))}g · main ${fq(num(l.mainCt))} · side ${fq(num(l.sideCt))} · +${esc(l.profitPct??JW().profit)}%</div></td>${JMETALS.map(([k])=>`<td class="n">$ ${fq(p[k].sell)}</td>`).join('')}</tr>`}).join('');
+  modal({title:`${q.no} · Quotation`,sub:`${esc(custName(q.customer))}${q.invTitle?' · '+esc(q.invTitle):''}`,wide:1,body:`
    <div class="tw"><table><thead><tr><th>#</th><th>Product</th>${JMETALS.map(([k,l])=>`<th class="num">${esc(l)}</th>`).join('')}</tr></thead><tbody>${rows}
-     <tr style="font-weight:700;background:var(--surface2)"><td></td><td>TOTAL</td>${JMETALS.map(([k])=>`<td class="n">$ ${fq(r2(tot[k]))}</td>`).join('')}</tr></tbody></table></div>
-   <p class="note" style="margin-top:10px">Customer chooses a metal; the price for that column applies. Rates are set in Settings → Jewellery rates.</p>`,
+     <tr style="font-weight:700;background:var(--surface2)"><td></td><td>TOTAL (USD)</td>${JMETALS.map(([k])=>`<td class="n">$ ${fq(r2(tot[k]))}</td>`).join('')}</tr></tbody></table></div>
+   <p class="note" style="margin-top:10px">Customer chooses a metal; that column's price applies.</p>`,
    foot:`<button class="btn" data-close>Close</button>${can('quotes','edit')?`<button class="btn" onclick="(function(){$('.ov')&&$('.ov').remove();jewelQuoteForm(byId('quotes','${q.id}'))})()">Edit</button>`:''}<button class="btn pri" onclick="quoteInvoicePDF(byId('quotes','${q.id}'))">${ic('print')} Quotation PDF</button>`})}
 function quoteInvoicePDF(q){
-  const c=byId('customers',q.customer)||{};const S2=SET;const bank=S2.invoiceBank||{};const lines=q.lines||[];
+  const S2=SET;const bank=S2.invoiceBank||{};const lines=q.lines||[];const rates=Object.assign({},JW(),q.rates||{});const co=S2.company||{};
   const tot={silver:0,'10k':0,'14k':0,'18k':0,platinum:0};
-  const rows=lines.map((l,i)=>{const p=jewelCalc(l);JMETALS.forEach(([k])=>tot[k]+=p[k].sell);
-    return `<tr><td class="c">${i+1}</td><td><b>${esc(l.desc||'')}</b><div class="m">${l.type==='mois'?'Moissanite':'Lab-grown diamond'}</div></td>${JMETALS.map(([k])=>`<td class="r">$ ${fq(p[k].sell)}</td>`).join('')}</tr>`}).join('');
+  const rows=lines.map((l,i)=>{const p=jewelCalc(l,rates);JMETALS.forEach(([k])=>tot[k]+=p[k].sell);
+    return `<tr${i%2?' class="alt"':''}><td class="c">${i+1}</td><td><b>${esc(l.desc||'')}</b><div class="m">${l.type==='mois'?'Moissanite':'Lab-grown diamond'}${num(l.grams)?' · '+fq(num(l.grams))+'g':''}</div></td>${JMETALS.map(([k])=>`<td class="r">$ ${fq(p[k].sell)}</td>`).join('')}</tr>`}).join('');
   const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(q.no)} · Quotation</title><style>
-   *{box-sizing:border-box}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;margin:0;padding:34px 40px;font-size:12px;line-height:1.5}
-   .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #141a3a;padding-bottom:14px}
-   .logo{height:42px}.title{text-align:center;font-size:17px;letter-spacing:.2em;color:#141a3a;font-weight:800;margin:18px 0 14px}
-   .meta{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px}
-   table{width:100%;border-collapse:collapse;margin-top:8px}
-   th{background:#141a3a;color:#fff;text-align:left;padding:8px 9px;font-size:10px;letter-spacing:.04em;text-transform:uppercase}
-   th.r{text-align:right}td{border-bottom:1px solid #e3e6ee;padding:8px 9px;vertical-align:top}td.c{text-align:center}td.r{text-align:right;font-variant-numeric:tabular-nums}
-   .m{color:#777;font-size:10px}.tot td{font-weight:800;background:#f4f1ea}
-   .sec{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#141a3a;font-weight:700;margin:22px 0 6px}
-   .pay{display:flex;flex-wrap:wrap;gap:6px 18px}.pay div{font-size:11.5px}
-   .bank{font-size:11.5px;line-height:1.7}.terms{font-size:11px;color:#333;line-height:1.7}
-   .foot{margin-top:24px;border-top:1px solid #e3e6ee;padding-top:10px;text-align:center;color:#666;font-size:11px}
-   @media print{body{padding:10px 0}.noprint{display:none}}</style></head><body>
-   <button class="noprint" onclick="print()" style="float:right;padding:8px 16px;cursor:pointer;border:1px solid #141a3a;background:#141a3a;color:#fff;border-radius:7px">Print / Save PDF</button>
-   <div class="hd"><div><img class="logo" src="${LOGO}" alt="Ivevar Luxury"></div>
-     <div style="text-align:right"><div style="font-size:11px;letter-spacing:.14em;color:#999;text-transform:uppercase">Quotation</div><div style="font-size:22px;font-weight:800;color:#141a3a">${esc(q.no||'')}</div></div></div>
-   <div class="title">QUOTATION INVOICE</div>
-   <div class="meta"><div><b>Name:</b> ${esc(custName(q.customer))}${q.invTitle?'<br><b>Item:</b> '+esc(q.invTitle):''}</div><div style="text-align:right"><b>Date:</b> ${esc(fdate(q.date)||q.date||'')}${q.validTill?'<br><b>Valid till:</b> '+esc(fdate(q.validTill)):''}</div></div>
+   *{box-sizing:border-box}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1d2630;margin:0;padding:38px 44px;font-size:12px;line-height:1.55}
+   .top{display:flex;justify-content:space-between;align-items:flex-start}
+   .logo{height:46px}
+   .qno{text-align:right}.qno .k{font-size:10px;letter-spacing:.22em;color:#b08a4a;text-transform:uppercase;font-weight:700}.qno .v{font-size:23px;font-weight:800;color:#18242c;letter-spacing:.02em}
+   .rule{height:3px;background:linear-gradient(90deg,#18242c 0%,#b08a4a 100%);margin:14px 0 0;border-radius:2px}
+   .title{text-align:center;font-size:18px;letter-spacing:.34em;color:#18242c;font-weight:800;margin:22px 0 4px}
+   .titleline{width:120px;height:2px;background:#b08a4a;margin:0 auto 18px}
+   .meta{display:flex;justify-content:space-between;font-size:12px;margin-bottom:12px}.meta b{color:#18242c}
+   table{width:100%;border-collapse:collapse;margin-top:6px}
+   th{background:#18242c;color:#fff;text-align:left;padding:9px 10px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:600}
+   th.r{text-align:right}td{border-bottom:1px solid #ece7df;padding:9px 10px;vertical-align:top}
+   tr.alt td{background:#faf8f3}td.c{text-align:center;color:#8a8a8a}td.r{text-align:right;font-variant-numeric:tabular-nums}
+   .m{color:#8a8278;font-size:10px;margin-top:2px}
+   .tot td{font-weight:800;background:#f1ebdd;color:#18242c;border-top:2px solid #b08a4a;border-bottom:0}
+   .pick{margin:8px 0 0;font-size:11px;color:#8a7a56;font-style:italic}
+   .grid{display:flex;gap:26px;margin-top:24px}.grid>div{flex:1}
+   .sec{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#b08a4a;font-weight:700;margin:0 0 7px;border-bottom:1px solid #ece7df;padding-bottom:4px}
+   .chips{display:flex;flex-wrap:wrap;gap:5px}.chip{border:1px solid #e3dccb;background:#faf8f3;border-radius:14px;padding:3px 10px;font-size:10.5px;color:#4a4a4a}
+   .bank{font-size:11.5px;line-height:1.85}.bank b{color:#18242c}
+   .terms{font-size:11px;color:#444;line-height:1.85;margin-top:16px}.terms .sec{margin-top:0}
+   .foot{margin-top:26px;border-top:1px solid #ece7df;padding-top:12px;text-align:center;color:#9a958c;font-size:10.5px}
+   .ty{text-align:center;color:#b08a4a;font-size:13px;letter-spacing:.08em;margin-top:18px;font-weight:600}
+   @media print{body{padding:12px 0}.noprint{display:none}}</style></head><body>
+   <button class="noprint" onclick="print()" style="float:right;padding:8px 16px;cursor:pointer;border:0;background:#18242c;color:#fff;border-radius:7px">Print / Save PDF</button>
+   <div class="top"><div><img class="logo" src="${LOGO}" alt="Ivevar Luxury"></div><div class="qno"><div class="k">Quotation</div><div class="v">${esc(q.no||'')}</div></div></div>
+   <div class="rule"></div>
+   <div class="title">QUOTATION INVOICE</div><div class="titleline"></div>
+   <div class="meta"><div><b>Name:</b> ${esc(custName(q.customer))}${q.invTitle?'<br><b>Item:</b> '+esc(q.invTitle):''}</div><div style="text-align:right"><b>Date:</b> ${esc(fdate(q.date)||q.date||'')}</div></div>
    <table><thead><tr><th class="c">SR</th><th>Product name</th>${JMETALS.map(([k,l])=>`<th class="r">${esc(l)}</th>`).join('')}</tr></thead>
      <tbody>${rows}<tr class="tot"><td></td><td>TOTAL</td>${JMETALS.map(([k])=>`<td class="r">$ ${fq(r2(tot[k]))}</td>`).join('')}</tr></tbody></table>
-   <div class="sec">Payment options</div><div class="pay">${(S2.invoicePayments||[]).map(p=>`<div>• ${esc(p)}</div>`).join('')}</div>
-   <div class="sec">Bank details</div><div class="bank">Account no: <b>${esc(bank.accountNo||'')}</b> · Routing: <b>${esc(bank.routing||'')}</b> · Type: ${esc(bank.accountType||'')}<br>Bank: ${esc(bank.bankName||'')} · Email: ${esc(bank.email||'')}</div>
-   <div class="sec">Terms &amp; conditions</div><div class="terms">${(S2.invoiceTerms||[]).map(t=>`• ${esc(t)}`).join('<br>')}</div>
-   <div class="foot">${esc((S2.company||{}).name||'Ivevar USA Inc')} · ${esc((S2.company||{}).address||'')}</div>
+   <div class="pick">All prices are per piece in USD. Choose your preferred metal — that column's price applies.</div>
+   <div class="grid">
+     <div><div class="sec">Payment options</div><div class="chips">${(S2.invoicePayments||[]).map(p=>`<span class="chip">${esc(p)}</span>`).join('')}</div></div>
+     <div><div class="sec">Bank details</div><div class="bank">Account no: <b>${esc(bank.accountNo||'')}</b><br>Routing: <b>${esc(bank.routing||'')}</b> · Type: ${esc(bank.accountType||'')}<br>Bank: ${esc(bank.bankName||'')}<br>Email: ${esc(bank.email||'')}</div></div>
+   </div>
+   <div class="terms"><div class="sec">Terms &amp; conditions</div>${(S2.invoiceTerms||[]).map(t=>`• ${esc(t)}`).join('<br>')}</div>
+   <div class="ty">Thank you for choosing ${esc(co.name||'Ivevar')}</div>
+   <div class="foot">${esc(co.name||'Ivevar USA Inc')}${co.address?' · '+esc(co.address):''}</div>
    <script>(function(){function pr(){try{print()}catch(e){}}var imgs=[].slice.call(document.images),n=imgs.length,d=0;if(!n){setTimeout(pr,350);return}function chk(){if(++d>=n)setTimeout(pr,250)}imgs.forEach(function(im){if(im.complete)chk();else{im.onload=chk;im.onerror=chk}});setTimeout(pr,3000)})()</`+`script></body></html>`;
   const w=window.open('','_blank');if(!w){toast('Allow pop-ups to print.',true);return}w.document.open();w.document.write(html);w.document.close()}
 function viewQuotes(){

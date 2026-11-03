@@ -332,8 +332,8 @@ const COMMISSION_PCT=()=>num(SET.commissionPct)||25;
 const JW=()=>Object.assign({dollar:92,silver:500,gold24:14000,platinum:6951,goldLabor:1200,platLabor:1400,shipping:5000,labMain:14000,labSide:12000,labCompare:18,moisMain:500,moisSide:500,moisCompare:15,profit:25},SET.jewel||{});
 const JMETALS=[['silver','925 Silver'],['10k','10K Gold'],['14k','14K Gold'],['18k','18K Gold'],['platinum','Platinum']];
 /* spec: {type:'lab'|'mois', grams, mainCt, sideCt, profitPct}. Returns {metalKey:{cost,sell,compare}} in USD. */
-function jewelCalc(spec){
-  const r=JW();const type=spec.type==='mois'?'mois':'lab';
+function jewelCalc(spec,rates){
+  const r=rates&&typeof rates==='object'?Object.assign({},JW(),rates):JW();const type=spec.type==='mois'?'mois':'lab';
   const main=num(spec.mainCt)*(type==='mois'?num(r.moisMain):num(r.labMain));
   const side=num(spec.sideCt)*(type==='mois'?num(r.moisSide):num(r.labSide));
   const g=num(spec.grams),ship=num(r.shipping),dollar=num(r.dollar)||92;
