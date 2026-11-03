@@ -294,7 +294,8 @@ const orderReceived=o=>toINRat(orderPaidRaw(o),ordCur(o),ordRate(o))+S.cash.filt
 /* Profit Before Marketing (INR) */
 function orderProfit(o){return r2(orderValueINR(o)-orderMakingINR(o)-orderCourierINR(o))}
 /* Sales-executive share of profit (default 25%) */
-function orderCommission(o){return r2(orderProfit(o)*COMMISSION_PCT()/100)}
+const commPctOf=uid=>{if(typeof ME!=='undefined'&&ME&&uid===ME.id)return num(ME.commPct)||0;const u=USERS.find(x=>x.id===uid);return u?num(u.commPct)||0:0};
+function orderCommission(o){return r2(orderProfit(o)*commPctOf(orderSeller(o))/100)}
 
 /* ---------- unique-piece inventory helpers ---------- */
 function pieceProfit(p){return r2(num(p.priceUSD)-num(p.costUSD))}
@@ -682,10 +683,12 @@ function orderForm(o){
     {k:'hrP',l:'Pricing & profit',t:'hr'},
     {k:'saleValue',l:'Total order value ($)',t:'num',req:1,hint:'What the customer pays'},
     {k:'usdRate',l:'Exchange rate → INR',ro:1,calc:v=>{const c=v.currency||'USD';return c==='INR'?'1.00 (INR)':fxRate(c).toFixed(2)+' ₹ / '+c},hint:'Admin-set rate — locked for this order'},
-    {k:'makingCostINR',l:'Making / product cost (₹)',t:'num',hint:'Your buy/making cost in INR'},
+    {k:'makingCostINR',l:'Making / product cost (₹)',t:'num',hint:'Type in ₹ — auto-converted to USD'},
+    {k:'makingUSD',l:'Making cost (USD, auto)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;return fcur(r2(num(v.makingCostINR)/r),'USD')}},
     {k:'courierINR',l:'Courier expense (₹)',t:'num'},
-    {k:'profitPreview',l:'Profit before marketing (₹)',ro:1,calc:v=>{const p=toINRat(num(v.saleValue),v.currency||'USD',fxRate(v.currency||'USD'))-num(v.makingCostINR)-num(v.courierINR);return money(p)}},
-    {k:'sharePreview',l:'Sales share '+COMMISSION_PCT()+'% (₹)',ro:1,calc:v=>{const p=toINRat(num(v.saleValue),v.currency||'USD',fxRate(v.currency||'USD'))-num(v.makingCostINR)-num(v.courierINR);return money(r2(p*COMMISSION_PCT()/100))}},
+    {k:'courierUSD',l:'Courier (USD, auto)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;return fcur(r2(num(v.courierINR)/r),'USD')}},
+    {k:'profitPreview',l:'Profit before marketing ($)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;const p=toINRat(num(v.saleValue),v.currency||'USD',r)-num(v.makingCostINR)-num(v.courierINR);return fcur(r2(p/r),'USD')}},
+    ...((commPctOf(ME.id)>0||ME.role==='admin')?[{k:'sharePreview',l:'Sales share '+(commPctOf(ME.id)||COMMISSION_PCT())+'% ($)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;const pct=commPctOf(ME.id)||(ME.role==='admin'?COMMISSION_PCT():0);const p=toINRat(num(v.saleValue),v.currency||'USD',r)-num(v.makingCostINR)-num(v.courierINR);return fcur(r2(p*pct/100/r),'USD')}}]:[]),
     ...(isNew?[{k:'advance',l:'Advance / deposit received now ($)',t:'num',hint:'Optional — add its screenshot below; an admin confirms it'},{k:'payMethod',l:'Payment method (how it came)',t:'sel',o:PAY_METHODS},{k:'payMethodOther',l:'If "Other", specify which method'},{k:'paymentShot',l:'Payment screenshot',t:'file',accept:'image/*',max:1,btn:'Upload payment screenshot',w:2}]:[]),
     ...(ME.role==='admin'?[{k:'salesBy',l:'Sales executive',t:'sel',o:()=>USERS.filter(u=>u.active!==false).map(u=>[u.id,u.name]),d:ME.id}]:[]),
     {k:'hrX',l:'Shipping address',t:'hr'},
@@ -709,7 +712,7 @@ function orderForm(o){
      let cust=S.customers.find(c=>(c.name||'').toLowerCase()===cn.toLowerCase());
      if(!cust){try{cust=await save('customers',{name:cn,phone,email:v.custEmail||'',city:v.city||'',country:v.custCountry||'',address:shipTo,source:v.channel||'Website'},{silent:1})}catch(e){return false}}
      v.customer=cust.id;v.email=v.custEmail||v.email||'';v.phone=phone;v.phoneCC=v.custCC||'';v.phoneNum=v.custPhone||'';v.country=v.custCountry||'';v.shipTo=shipTo;
-     delete v.custName;delete v.custEmail;delete v.custPhone;delete v.custCC;delete v.custCountry;delete v.orderIdDisplay;delete v.profitPreview;delete v.sharePreview;
+     delete v.custName;delete v.custEmail;delete v.custPhone;delete v.custCC;delete v.custCountry;delete v.orderIdDisplay;delete v.profitPreview;delete v.sharePreview;delete v.makingUSD;delete v.courierUSD;
      const adv=num(v.advance);delete v.advance;
      const prodFiles=Array.isArray(v.productFiles)?v.productFiles:[];delete v.productFiles;
      const payShot=(Array.isArray(v.paymentShot)?v.paymentShot:[])[0]||null;delete v.paymentShot;
@@ -769,7 +772,7 @@ function orderDetail(o){
    <h3>Order stage</h3>${stageStepper(o)}
    <div><h3>Items</h3>${table([{l:'#',h:(r)=>(o.lines.indexOf(r)+1)},{l:'Item',h:r=>`<b>${esc(r.desc||'')}</b>${r.free?' <span class="pill">Free gift</span>':''}<div class="note">${esc([r.variant||r.category,r.diamondType,r.movement&&r.movement!=='—'?r.movement:'',r.variant?'':r.size,r.sku?'SKU '+r.sku:''].filter(Boolean).join(' · '))}</div>${(r.props||[]).map(x=>`<div class="note" style="color:var(--accent)"><b>${esc(x.name)}:</b> ${esc(x.value)}</div>`).join('')}`},{l:'Price',n:1,h:r=>r.price!=null&&r.price!==''?money(r.price):''},{l:'Purity',k:'purity'},{l:'Qty',n:1,k:'qty'},{l:'Target wt',n:1,h:r=>fw(r.targetWt)},{l:'Status',h:r=>stPill(r.status)},{l:'QC',h:r=>{const s=lineQCState(o.id,o.lines.indexOf(r));return `<span class="pill ${s.ok?'good':s.rec?'warn':''}">${esc(s.label)}</span>`}},{l:'Dispatched',n:1,h:r=>`${fq(dispatchedQty(o.id,o.lines.indexOf(r)))}/${fq(r.qty||1)}`},{l:'',h:r=>can('production','edit')?`<button class="btn sm" data-mkjob="${o.lines.indexOf(r)}">+ Job card</button>`:''}],o.lines||[])}</div>
    <div class="grid g2">
-    <div><h3>Profit sheet</h3><dl class="dl"><dt>Order value</dt><dd class="num" style="text-align:left">${fcur(orderSaleRaw(o),ordCur(o))} <span class="note">· ${money(orderValueINR(o))} @ ${fq(ordRate(o))}</span></dd><dt>Making / product cost</dt><dd class="num">− ${uUSD(orderMakingINR(o))} <span class="note">${money(orderMakingINR(o))}</span></dd><dt>Courier expense</dt><dd class="num">− ${uUSD(orderCourierINR(o))} <span class="note">${money(orderCourierINR(o))}</span></dd><dt><b>Profit before marketing</b></dt><dd class="num"><b style="color:${orderProfit(o)<0?'var(--bad)':'var(--good)'}">${uUSD(orderProfit(o))}</b> <span class="note">${money(orderProfit(o))}</span>${orderValueINR(o)?' ('+fq(orderProfit(o)/orderValueINR(o)*100)+'%)':''}</dd><dt>Sales share (${COMMISSION_PCT()}%)</dt><dd class="num" style="color:var(--accent)">${uUSD(orderCommission(o))} <span class="note">${money(orderCommission(o))}</span></dd><dt>Sales executive</dt><dd>${esc(userName(orderSeller(o)))}</dd></dl></div>
+    <div><h3>Profit sheet</h3><dl class="dl"><dt>Order value</dt><dd class="num" style="text-align:left">${fcur(orderSaleRaw(o),ordCur(o))} <span class="note">· ${money(orderValueINR(o))} @ ${fq(ordRate(o))}</span></dd><dt>Making / product cost</dt><dd class="num">− ${uUSD(orderMakingINR(o))} <span class="note">${money(orderMakingINR(o))}</span></dd><dt>Courier expense</dt><dd class="num">− ${uUSD(orderCourierINR(o))} <span class="note">${money(orderCourierINR(o))}</span></dd><dt><b>Profit before marketing</b></dt><dd class="num"><b style="color:${orderProfit(o)<0?'var(--bad)':'var(--good)'}">${uUSD(orderProfit(o))}</b> <span class="note">${money(orderProfit(o))}</span>${orderValueINR(o)?' ('+fq(orderProfit(o)/orderValueINR(o)*100)+'%)':''}</dd>${commPctOf(orderSeller(o))>0?`<dt>Sales share (${commPctOf(orderSeller(o))}%)</dt><dd class="num" style="color:var(--accent)">${uUSD(orderCommission(o))} <span class="note">${money(orderCommission(o))}</span></dd>`:''}<dt>Sales executive</dt><dd>${esc(userName(orderSeller(o)))}</dd></dl></div>
     ${paymentsPanel(o)}
     ${productPanel(o)}
     ${qcPanel(o)}
@@ -964,7 +967,7 @@ function staffReport(u){
   modal({title:`${u.name} · ${roleLabel(u)}`,sub:'Performance report',wide:1,body:`<div id="srB">${draw()}</div>`})}
 
 /* employee commission rows (Ivevar 25% profit-share model, like the master sheet) */
-function commissionRows(from){return USERS.filter(u=>u.active!==false&&u.role!=='admin').map(u=>{const st=salesStats(u.id,from);const profit=r2(st.orders.reduce((a,o)=>a+orderProfit(o),0));const share=r2(st.orders.reduce((a,o)=>a+orderCommission(o),0));const mkt=r2(S.cash.filter(e=>e.type==='Expense'&&/market/i.test(e.category||'')&&e.employee===u.id&&(!from||(e.date||'')>=from)).reduce((a,e)=>a+num(e.amount),0));return{id:u.id,name:u.name,orders:st.count,profit,share,marketing:mkt,payable:r2(share-mkt)}}).filter(r=>r.orders||r.profit)}
+function commissionRows(from){return USERS.filter(u=>u.active!==false&&u.role!=='admin'&&commPctOf(u.id)>0).map(u=>{const st=salesStats(u.id,from);const profit=r2(st.orders.reduce((a,o)=>a+orderProfit(o),0));const share=r2(st.orders.reduce((a,o)=>a+orderCommission(o),0));const mkt=r2(S.cash.filter(e=>e.type==='Expense'&&/market/i.test(e.category||'')&&e.employee===u.id&&(!from||(e.date||'')>=from)).reduce((a,e)=>a+num(e.amount),0));return{id:u.id,name:u.name,orders:st.count,profit,share,marketing:mkt,payable:r2(share-mkt)}}).filter(r=>r.orders||r.profit)}
 
 /* ============ ORDER PRINT ============ */
 function printOrder(o){const c=byId('customers',o.customer)||{};const company=SET.company||{};
@@ -1531,13 +1534,13 @@ function userForm(id){const u=USERS.find(x=>x.id===id);
   const accNow=u?(u.role==='admin'?'admin':(u.title||'Custom')):'Sales';
   const sh=u&&u.shift||{};
   openForm({title:u?`Edit ${u.name}`:'Add user',wide:1,
-   value:u?{...u,acc:accNow,active:u.active?'Active':'Inactive',modules:u.modules||[],shiftStart:sh.start||'',shiftEnd:sh.end||'',salary:u.salary||'',phone:u.phone||'',dept:u.dept||''}:{acc:'Sales',active:'Active',modules:[...TITLE_MODS.Sales]},
+   value:u?{...u,acc:accNow,active:u.active?'Active':'Inactive',modules:u.modules||[],shiftStart:sh.start||'',shiftEnd:sh.end||'',salary:u.salary||'',commPct:u.commPct||'',phone:u.phone||'',dept:u.dept||''}:{acc:'Sales',active:'Active',modules:[...TITLE_MODS.Sales]},
    fields:[
     {k:'name',l:'Full name',req:1,w:2},{k:'email',l:'Login email (this is their login ID)',t:'email',req:1,w:2,hint:'They sign in with this email and the password below.'},
     {k:'acc',l:'Role / access',t:'sel',o:[['admin','Super Admin — full control'],...TITLES.map(t=>[t,TITLE_LABEL[t]])],req:1},
     {k:'dept',l:'Department',t:'sel',o:()=>SET.staffDepts||[]},{k:'active',l:'Status',t:'sel',o:['Active','Inactive']},{k:'phone',l:'Phone / WhatsApp',t:'tel'},
     {k:'hrS',l:'Shift & salary',t:'hr'},
-    {k:'shiftStart',l:'Shift start',t:'time',hint:'e.g. 09:00'},{k:'shiftEnd',l:'Shift end',t:'time',hint:'Night shift ok, e.g. 23:00–06:00'},{k:'salary',l:'Monthly salary (₹)',t:'num'},
+    {k:'shiftStart',l:'Shift start',t:'time',hint:'e.g. 09:00'},{k:'shiftEnd',l:'Shift end',t:'time',hint:'Night shift ok, e.g. 23:00–06:00'},{k:'salary',l:'Monthly salary (₹)',t:'num'},{k:'commPct',l:'Sales commission % (0 = salary only)',t:'num',hint:'25 = this person earns 25% profit share on their orders. Leave 0 for salary-only staff.'},
     {k:'modules',l:'Sections this person can open (pick a role to auto-fill — you can still tweak)',t:'chk',w:4,o:()=>MODS.filter(m=>!['dashboard','chat','setup','audit'].includes(m[0])&&!HIDDEN_MODS.includes(m[0])).map(m=>[m[0],m[1]])},
     {k:'password',l:u?'Reset password (leave blank to keep)':'Password',req:!u,w:2,hint:'At least 8 characters. Share email + password privately; they can change it after signing in.'}],
    onChange(cur,form){const box=form.querySelector('[data-k="modules"]');if(!box)return;
@@ -1550,7 +1553,7 @@ function userForm(id){const u=USERS.find(x=>x.id===id);
      const mods=role==='admin'?null:(v.modules||[]);
      if(role==='office'&&!(v.modules||[]).length){toast('Tick at least one section for this person.',true);return false}
      if((v.shiftStart&&!v.shiftEnd)||(!v.shiftStart&&v.shiftEnd)){toast('Enter both shift start and end (or leave both blank).',true);return false}
-     try{const r=await api('/api/users',{id:u&&u.id,name:v.name,email:v.email,role,title,active:v.active==='Active',password:v.password||undefined,modules:mods,shiftStart:v.shiftStart||'',shiftEnd:v.shiftEnd||'',salary:v.salary,phone:v.phone,dept:v.dept||''});USERS=r.users;toast('User saved');render();
+     try{const r=await api('/api/users',{id:u&&u.id,name:v.name,email:v.email,role,title,active:v.active==='Active',password:v.password||undefined,modules:mods,shiftStart:v.shiftStart||'',shiftEnd:v.shiftEnd||'',salary:v.salary,commPct:v.commPct,phone:v.phone,dept:v.dept||''});USERS=r.users;toast('User saved');render();
        if(!u&&v.password)setTimeout(()=>confirmBox('User created','Share these login details privately:<br><br><b>Login (email):</b> '+esc(v.email)+'<br><b>Password:</b> '+esc(v.password)+'<br><br>They can change the password after signing in.',()=>{},'Done'),200);
      }catch(e){toast(e.message,true);return false}}})}
 function savePerms(){const P=JSON.parse(JSON.stringify({...defaultPerms(),...(SET.perms||{})}));$$('[data-p]').forEach(s=>{const [r,k]=s.dataset.p.split('|');P[r]=P[r]||{};P[r][k]=s.value});askReason('Change permissions','Reason for change',r=>saveSettings({perms:P},r))}

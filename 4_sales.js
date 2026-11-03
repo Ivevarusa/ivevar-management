@@ -197,10 +197,12 @@ function orderForm(o){
     {k:'hrP',l:'Pricing & profit',t:'hr'},
     {k:'saleValue',l:'Total order value ($)',t:'num',req:1,hint:'What the customer pays'},
     {k:'usdRate',l:'Exchange rate → INR',ro:1,calc:v=>{const c=v.currency||'USD';return c==='INR'?'1.00 (INR)':fxRate(c).toFixed(2)+' ₹ / '+c},hint:'Admin-set rate — locked for this order'},
-    {k:'makingCostINR',l:'Making / product cost (₹)',t:'num',hint:'Your buy/making cost in INR'},
+    {k:'makingCostINR',l:'Making / product cost (₹)',t:'num',hint:'Type in ₹ — auto-converted to USD'},
+    {k:'makingUSD',l:'Making cost (USD, auto)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;return fcur(r2(num(v.makingCostINR)/r),'USD')}},
     {k:'courierINR',l:'Courier expense (₹)',t:'num'},
-    {k:'profitPreview',l:'Profit before marketing (₹)',ro:1,calc:v=>{const p=toINRat(num(v.saleValue),v.currency||'USD',fxRate(v.currency||'USD'))-num(v.makingCostINR)-num(v.courierINR);return money(p)}},
-    {k:'sharePreview',l:'Sales share '+COMMISSION_PCT()+'% (₹)',ro:1,calc:v=>{const p=toINRat(num(v.saleValue),v.currency||'USD',fxRate(v.currency||'USD'))-num(v.makingCostINR)-num(v.courierINR);return money(r2(p*COMMISSION_PCT()/100))}},
+    {k:'courierUSD',l:'Courier (USD, auto)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;return fcur(r2(num(v.courierINR)/r),'USD')}},
+    {k:'profitPreview',l:'Profit before marketing ($)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;const p=toINRat(num(v.saleValue),v.currency||'USD',r)-num(v.makingCostINR)-num(v.courierINR);return fcur(r2(p/r),'USD')}},
+    ...((commPctOf(ME.id)>0||ME.role==='admin')?[{k:'sharePreview',l:'Sales share '+(commPctOf(ME.id)||COMMISSION_PCT())+'% ($)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;const pct=commPctOf(ME.id)||(ME.role==='admin'?COMMISSION_PCT():0);const p=toINRat(num(v.saleValue),v.currency||'USD',r)-num(v.makingCostINR)-num(v.courierINR);return fcur(r2(p*pct/100/r),'USD')}}]:[]),
     ...(isNew?[{k:'advance',l:'Advance / deposit received now ($)',t:'num',hint:'Optional — add its screenshot below; an admin confirms it'},{k:'payMethod',l:'Payment method (how it came)',t:'sel',o:PAY_METHODS},{k:'payMethodOther',l:'If "Other", specify which method'},{k:'paymentShot',l:'Payment screenshot',t:'file',accept:'image/*',max:1,btn:'Upload payment screenshot',w:2}]:[]),
     ...(ME.role==='admin'?[{k:'salesBy',l:'Sales executive',t:'sel',o:()=>USERS.filter(u=>u.active!==false).map(u=>[u.id,u.name]),d:ME.id}]:[]),
     {k:'hrX',l:'Shipping address',t:'hr'},
@@ -224,7 +226,7 @@ function orderForm(o){
      let cust=S.customers.find(c=>(c.name||'').toLowerCase()===cn.toLowerCase());
      if(!cust){try{cust=await save('customers',{name:cn,phone,email:v.custEmail||'',city:v.city||'',country:v.custCountry||'',address:shipTo,source:v.channel||'Website'},{silent:1})}catch(e){return false}}
      v.customer=cust.id;v.email=v.custEmail||v.email||'';v.phone=phone;v.phoneCC=v.custCC||'';v.phoneNum=v.custPhone||'';v.country=v.custCountry||'';v.shipTo=shipTo;
-     delete v.custName;delete v.custEmail;delete v.custPhone;delete v.custCC;delete v.custCountry;delete v.orderIdDisplay;delete v.profitPreview;delete v.sharePreview;
+     delete v.custName;delete v.custEmail;delete v.custPhone;delete v.custCC;delete v.custCountry;delete v.orderIdDisplay;delete v.profitPreview;delete v.sharePreview;delete v.makingUSD;delete v.courierUSD;
      const adv=num(v.advance);delete v.advance;
      const prodFiles=Array.isArray(v.productFiles)?v.productFiles:[];delete v.productFiles;
      const payShot=(Array.isArray(v.paymentShot)?v.paymentShot:[])[0]||null;delete v.paymentShot;
@@ -284,7 +286,7 @@ function orderDetail(o){
    <h3>Order stage</h3>${stageStepper(o)}
    <div><h3>Items</h3>${table([{l:'#',h:(r)=>(o.lines.indexOf(r)+1)},{l:'Item',h:r=>`<b>${esc(r.desc||'')}</b>${r.free?' <span class="pill">Free gift</span>':''}<div class="note">${esc([r.variant||r.category,r.diamondType,r.movement&&r.movement!=='—'?r.movement:'',r.variant?'':r.size,r.sku?'SKU '+r.sku:''].filter(Boolean).join(' · '))}</div>${(r.props||[]).map(x=>`<div class="note" style="color:var(--accent)"><b>${esc(x.name)}:</b> ${esc(x.value)}</div>`).join('')}`},{l:'Price',n:1,h:r=>r.price!=null&&r.price!==''?money(r.price):''},{l:'Purity',k:'purity'},{l:'Qty',n:1,k:'qty'},{l:'Target wt',n:1,h:r=>fw(r.targetWt)},{l:'Status',h:r=>stPill(r.status)},{l:'QC',h:r=>{const s=lineQCState(o.id,o.lines.indexOf(r));return `<span class="pill ${s.ok?'good':s.rec?'warn':''}">${esc(s.label)}</span>`}},{l:'Dispatched',n:1,h:r=>`${fq(dispatchedQty(o.id,o.lines.indexOf(r)))}/${fq(r.qty||1)}`},{l:'',h:r=>can('production','edit')?`<button class="btn sm" data-mkjob="${o.lines.indexOf(r)}">+ Job card</button>`:''}],o.lines||[])}</div>
    <div class="grid g2">
-    <div><h3>Profit sheet</h3><dl class="dl"><dt>Order value</dt><dd class="num" style="text-align:left">${fcur(orderSaleRaw(o),ordCur(o))} <span class="note">· ${money(orderValueINR(o))} @ ${fq(ordRate(o))}</span></dd><dt>Making / product cost</dt><dd class="num">− ${uUSD(orderMakingINR(o))} <span class="note">${money(orderMakingINR(o))}</span></dd><dt>Courier expense</dt><dd class="num">− ${uUSD(orderCourierINR(o))} <span class="note">${money(orderCourierINR(o))}</span></dd><dt><b>Profit before marketing</b></dt><dd class="num"><b style="color:${orderProfit(o)<0?'var(--bad)':'var(--good)'}">${uUSD(orderProfit(o))}</b> <span class="note">${money(orderProfit(o))}</span>${orderValueINR(o)?' ('+fq(orderProfit(o)/orderValueINR(o)*100)+'%)':''}</dd><dt>Sales share (${COMMISSION_PCT()}%)</dt><dd class="num" style="color:var(--accent)">${uUSD(orderCommission(o))} <span class="note">${money(orderCommission(o))}</span></dd><dt>Sales executive</dt><dd>${esc(userName(orderSeller(o)))}</dd></dl></div>
+    <div><h3>Profit sheet</h3><dl class="dl"><dt>Order value</dt><dd class="num" style="text-align:left">${fcur(orderSaleRaw(o),ordCur(o))} <span class="note">· ${money(orderValueINR(o))} @ ${fq(ordRate(o))}</span></dd><dt>Making / product cost</dt><dd class="num">− ${uUSD(orderMakingINR(o))} <span class="note">${money(orderMakingINR(o))}</span></dd><dt>Courier expense</dt><dd class="num">− ${uUSD(orderCourierINR(o))} <span class="note">${money(orderCourierINR(o))}</span></dd><dt><b>Profit before marketing</b></dt><dd class="num"><b style="color:${orderProfit(o)<0?'var(--bad)':'var(--good)'}">${uUSD(orderProfit(o))}</b> <span class="note">${money(orderProfit(o))}</span>${orderValueINR(o)?' ('+fq(orderProfit(o)/orderValueINR(o)*100)+'%)':''}</dd>${commPctOf(orderSeller(o))>0?`<dt>Sales share (${commPctOf(orderSeller(o))}%)</dt><dd class="num" style="color:var(--accent)">${uUSD(orderCommission(o))} <span class="note">${money(orderCommission(o))}</span></dd>`:''}<dt>Sales executive</dt><dd>${esc(userName(orderSeller(o)))}</dd></dl></div>
     ${paymentsPanel(o)}
     ${productPanel(o)}
     ${qcPanel(o)}
@@ -479,7 +481,7 @@ function staffReport(u){
   modal({title:`${u.name} · ${roleLabel(u)}`,sub:'Performance report',wide:1,body:`<div id="srB">${draw()}</div>`})}
 
 /* employee commission rows (Ivevar 25% profit-share model, like the master sheet) */
-function commissionRows(from){return USERS.filter(u=>u.active!==false&&u.role!=='admin').map(u=>{const st=salesStats(u.id,from);const profit=r2(st.orders.reduce((a,o)=>a+orderProfit(o),0));const share=r2(st.orders.reduce((a,o)=>a+orderCommission(o),0));const mkt=r2(S.cash.filter(e=>e.type==='Expense'&&/market/i.test(e.category||'')&&e.employee===u.id&&(!from||(e.date||'')>=from)).reduce((a,e)=>a+num(e.amount),0));return{id:u.id,name:u.name,orders:st.count,profit,share,marketing:mkt,payable:r2(share-mkt)}}).filter(r=>r.orders||r.profit)}
+function commissionRows(from){return USERS.filter(u=>u.active!==false&&u.role!=='admin'&&commPctOf(u.id)>0).map(u=>{const st=salesStats(u.id,from);const profit=r2(st.orders.reduce((a,o)=>a+orderProfit(o),0));const share=r2(st.orders.reduce((a,o)=>a+orderCommission(o),0));const mkt=r2(S.cash.filter(e=>e.type==='Expense'&&/market/i.test(e.category||'')&&e.employee===u.id&&(!from||(e.date||'')>=from)).reduce((a,e)=>a+num(e.amount),0));return{id:u.id,name:u.name,orders:st.count,profit,share,marketing:mkt,payable:r2(share-mkt)}}).filter(r=>r.orders||r.profit)}
 
 /* ============ ORDER PRINT ============ */
 function printOrder(o){const c=byId('customers',o.customer)||{};const company=SET.company||{};

@@ -294,7 +294,8 @@ const orderReceived=o=>toINRat(orderPaidRaw(o),ordCur(o),ordRate(o))+S.cash.filt
 /* Profit Before Marketing (INR) */
 function orderProfit(o){return r2(orderValueINR(o)-orderMakingINR(o)-orderCourierINR(o))}
 /* Sales-executive share of profit (default 25%) */
-function orderCommission(o){return r2(orderProfit(o)*COMMISSION_PCT()/100)}
+const commPctOf=uid=>{if(typeof ME!=='undefined'&&ME&&uid===ME.id)return num(ME.commPct)||0;const u=USERS.find(x=>x.id===uid);return u?num(u.commPct)||0:0};
+function orderCommission(o){return r2(orderProfit(o)*commPctOf(orderSeller(o))/100)}
 
 /* ---------- unique-piece inventory helpers ---------- */
 function pieceProfit(p){return r2(num(p.priceUSD)-num(p.costUSD))}

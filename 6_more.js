@@ -306,13 +306,13 @@ function userForm(id){const u=USERS.find(x=>x.id===id);
   const accNow=u?(u.role==='admin'?'admin':(u.title||'Custom')):'Sales';
   const sh=u&&u.shift||{};
   openForm({title:u?`Edit ${u.name}`:'Add user',wide:1,
-   value:u?{...u,acc:accNow,active:u.active?'Active':'Inactive',modules:u.modules||[],shiftStart:sh.start||'',shiftEnd:sh.end||'',salary:u.salary||'',phone:u.phone||'',dept:u.dept||''}:{acc:'Sales',active:'Active',modules:[...TITLE_MODS.Sales]},
+   value:u?{...u,acc:accNow,active:u.active?'Active':'Inactive',modules:u.modules||[],shiftStart:sh.start||'',shiftEnd:sh.end||'',salary:u.salary||'',commPct:u.commPct||'',phone:u.phone||'',dept:u.dept||''}:{acc:'Sales',active:'Active',modules:[...TITLE_MODS.Sales]},
    fields:[
     {k:'name',l:'Full name',req:1,w:2},{k:'email',l:'Login email (this is their login ID)',t:'email',req:1,w:2,hint:'They sign in with this email and the password below.'},
     {k:'acc',l:'Role / access',t:'sel',o:[['admin','Super Admin — full control'],...TITLES.map(t=>[t,TITLE_LABEL[t]])],req:1},
     {k:'dept',l:'Department',t:'sel',o:()=>SET.staffDepts||[]},{k:'active',l:'Status',t:'sel',o:['Active','Inactive']},{k:'phone',l:'Phone / WhatsApp',t:'tel'},
     {k:'hrS',l:'Shift & salary',t:'hr'},
-    {k:'shiftStart',l:'Shift start',t:'time',hint:'e.g. 09:00'},{k:'shiftEnd',l:'Shift end',t:'time',hint:'Night shift ok, e.g. 23:00–06:00'},{k:'salary',l:'Monthly salary (₹)',t:'num'},
+    {k:'shiftStart',l:'Shift start',t:'time',hint:'e.g. 09:00'},{k:'shiftEnd',l:'Shift end',t:'time',hint:'Night shift ok, e.g. 23:00–06:00'},{k:'salary',l:'Monthly salary (₹)',t:'num'},{k:'commPct',l:'Sales commission % (0 = salary only)',t:'num',hint:'25 = this person earns 25% profit share on their orders. Leave 0 for salary-only staff.'},
     {k:'modules',l:'Sections this person can open (pick a role to auto-fill — you can still tweak)',t:'chk',w:4,o:()=>MODS.filter(m=>!['dashboard','chat','setup','audit'].includes(m[0])&&!HIDDEN_MODS.includes(m[0])).map(m=>[m[0],m[1]])},
     {k:'password',l:u?'Reset password (leave blank to keep)':'Password',req:!u,w:2,hint:'At least 8 characters. Share email + password privately; they can change it after signing in.'}],
    onChange(cur,form){const box=form.querySelector('[data-k="modules"]');if(!box)return;
@@ -325,7 +325,7 @@ function userForm(id){const u=USERS.find(x=>x.id===id);
      const mods=role==='admin'?null:(v.modules||[]);
      if(role==='office'&&!(v.modules||[]).length){toast('Tick at least one section for this person.',true);return false}
      if((v.shiftStart&&!v.shiftEnd)||(!v.shiftStart&&v.shiftEnd)){toast('Enter both shift start and end (or leave both blank).',true);return false}
-     try{const r=await api('/api/users',{id:u&&u.id,name:v.name,email:v.email,role,title,active:v.active==='Active',password:v.password||undefined,modules:mods,shiftStart:v.shiftStart||'',shiftEnd:v.shiftEnd||'',salary:v.salary,phone:v.phone,dept:v.dept||''});USERS=r.users;toast('User saved');render();
+     try{const r=await api('/api/users',{id:u&&u.id,name:v.name,email:v.email,role,title,active:v.active==='Active',password:v.password||undefined,modules:mods,shiftStart:v.shiftStart||'',shiftEnd:v.shiftEnd||'',salary:v.salary,commPct:v.commPct,phone:v.phone,dept:v.dept||''});USERS=r.users;toast('User saved');render();
        if(!u&&v.password)setTimeout(()=>confirmBox('User created','Share these login details privately:<br><br><b>Login (email):</b> '+esc(v.email)+'<br><b>Password:</b> '+esc(v.password)+'<br><br>They can change the password after signing in.',()=>{},'Done'),200);
      }catch(e){toast(e.message,true);return false}}})}
 function savePerms(){const P=JSON.parse(JSON.stringify({...defaultPerms(),...(SET.perms||{})}));$$('[data-p]').forEach(s=>{const [r,k]=s.dataset.p.split('|');P[r]=P[r]||{};P[r][k]=s.value});askReason('Change permissions','Reason for change',r=>saveSettings({perms:P},r))}

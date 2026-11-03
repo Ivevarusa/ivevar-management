@@ -127,7 +127,7 @@ async function authUser(req, env) {
   if (!s.active || now - s.last_seen > SESSION_DAYS * 864e5) { await env.DB.prepare(`DELETE FROM sessions WHERE token_hash=?`).bind(th).run(); return null; }
   if (now - s.last_seen > 10 * 60e3) await env.DB.prepare(`UPDATE sessions SET last_seen=? WHERE token_hash=?`).bind(now, th).run();
   const meta = parseMeta(s.meta);
-  return { id: s.id, email: s.email, name: s.name, role: s.role, active: !!s.active, modules: s.role === 'admin' ? null : parseMods(s.modules), title: s.role === 'admin' ? '' : (meta.title || ''), shift: meta.shift || null, salary: num(meta.salary), phone: meta.phone || '', dept: meta.dept || '', tokenHash: th };
+  return { id: s.id, email: s.email, name: s.name, role: s.role, active: !!s.active, modules: s.role === 'admin' ? null : parseMods(s.modules), title: s.role === 'admin' ? '' : (meta.title || ''), shift: meta.shift || null, salary: num(meta.salary), phone: meta.phone || '', dept: meta.dept || '', commPct: num(meta.commPct), tokenHash: th };
 }
 async function newSession(env, user, req) {
   const tok = rid(32);
@@ -136,7 +136,7 @@ async function newSession(env, user, req) {
   return tok;
 }
 const sessCookie = tok => `erp_s=${tok}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_DAYS * 86400}`;
-const pubUser = u => ({ id: u.id, name: u.name, email: u.email, role: u.role, modules: u.role === 'admin' ? null : (Array.isArray(u.modules) ? u.modules : parseMods(u.modules)), title: u.title || '', shift: u.shift || null, salary: num(u.salary), phone: u.phone || '', dept: u.dept || '' });
+const pubUser = u => ({ id: u.id, name: u.name, email: u.email, role: u.role, modules: u.role === 'admin' ? null : (Array.isArray(u.modules) ? u.modules : parseMods(u.modules)), title: u.title || '', shift: u.shift || null, salary: num(u.salary), phone: u.phone || '', dept: u.dept || '', commPct: num(u.commPct) });
 
 /* ---------- audit ---------- */
 function diff(a, b) {
@@ -394,7 +394,7 @@ async function handleSync(env, user, settings, url) {
   const { results: us } = await env.DB.prepare(`SELECT id,name,email,role,active,last_login,modules,meta FROM users ORDER BY name`).all();
   const seeHR = can(user, settings, 'hr', 'view') || can(user, settings, 'setup', 'view');
   out.users = us.map(u => { const m = parseMeta(u.meta); const base = { id: u.id, name: u.name, role: u.role, active: !!u.active, title: m.title || '', shift: m.shift || null, dept: m.dept || '' };
-    if (can(user, settings, 'setup', 'view')) return { ...u, ...base, email: u.email, lastLogin: u.last_login, modules: parseMods(u.modules), salary: seeHR ? num(m.salary) : undefined, phone: m.phone || '' };
+    if (can(user, settings, 'setup', 'view')) return { ...u, ...base, email: u.email, lastLogin: u.last_login, modules: parseMods(u.modules), salary: seeHR ? num(m.salary) : undefined, phone: m.phone || '', commPct: num(m.commPct) };
     if (seeHR) return { ...base, salary: num(m.salary), phone: m.phone || '' };
     return base; });
   return json(out);
@@ -416,6 +416,7 @@ async function handleUsers(env, user, settings, b) {
     if (b.role === 'admin') { delete m.title; } else if (b.title != null) m.title = TITLE_MODS[b.title] || b.title === 'Custom' ? String(b.title).slice(0, 40) : (m.title || '');
     if (b.shiftStart != null || b.shiftEnd != null) m.shift = (b.shiftStart || b.shiftEnd) ? { start: String(b.shiftStart || '').slice(0, 5), end: String(b.shiftEnd || '').slice(0, 5) } : null;
     if (b.salary != null && b.salary !== '') m.salary = num(b.salary);
+    if (b.commPct != null && b.commPct !== '') m.commPct = num(b.commPct); else if (b.commPct === '') delete m.commPct;
     if (b.phone != null) m.phone = String(b.phone).slice(0, 40);
     if (b.dept != null) m.dept = String(b.dept).slice(0, 40);
     return JSON.stringify(m); };
@@ -439,7 +440,7 @@ async function handleUsers(env, user, settings, b) {
     await writeAudit(env, user, 'users', id, b.name, 'create', { name: { old: null, new: b.name }, email: { old: null, new: email }, role: { old: null, new: b.role }, title: { old: null, new: b.title || '' } }, '');
   }
   const { results } = await env.DB.prepare(`SELECT id,name,email,role,active,last_login,modules,meta FROM users ORDER BY name`).all();
-  return json({ users: results.map(u => { const m = parseMeta(u.meta); return { id: u.id, name: u.name, email: u.email, role: u.role, active: !!u.active, lastLogin: u.last_login, modules: parseMods(u.modules), title: m.title || '', shift: m.shift || null, salary: num(m.salary), phone: m.phone || '', dept: m.dept || '' }; }) });
+  return json({ users: results.map(u => { const m = parseMeta(u.meta); return { id: u.id, name: u.name, email: u.email, role: u.role, active: !!u.active, lastLogin: u.last_login, modules: parseMods(u.modules), title: m.title || '', shift: m.shift || null, salary: num(m.salary), phone: m.phone || '', dept: m.dept || '', commPct: num(m.commPct) }; }) });
 }
 
 const ALLOWED_FILE = /^(image\/(png|jpe?g|webp|gif|heic|heif)|application\/(pdf|zip|x-zip-compressed|octet-stream|sla|vnd\.ms-pki\.stl)|model\/.*|text\/plain|text\/csv)$/i;
