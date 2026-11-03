@@ -203,13 +203,17 @@ function orderForm(o){
     {k:'salesBy',l:'Sales executive',t:'sel',o:()=>USERS.filter(u=>u.active!==false).map(u=>[u.id,u.name]),d:ME.id},
     {k:'hrX',l:'Shipping address',t:'hr'},
     {k:'addr1',l:'Address line 1',w:2},{k:'addr2',l:'Address line 2 (optional)',w:2},
-    {k:'city',l:'City'},{k:'state',l:'State / province'},{k:'zip',l:'ZIP / postal code'},{k:'custCountry',l:'Country',d:'USA'},
+    {k:'custCountry',l:'Country',t:'sel',o:()=>COUNTRIES,d:'United States'},{k:'state',l:'State / province',list:()=>(C_STATES['United States']||[]).map(s=>[s,s])},{k:'city',l:'City',list:()=>[]},{k:'zip',l:'ZIP / postal code'},
     {k:'hrE',l:'Extras',t:'hr'},
     {k:'gift',l:'Is this a gift?',t:'bool',cl:'Yes, gift'},{k:'engraving',l:'Engraving (if any)'},{k:'followup',l:'Follow-up needed?',t:'bool',cl:'Yes'},
     {k:'instructions',l:'Special instructions / notes',t:'ta',w:2}],
    onChange(cur,form){const sym=curSym(cur.currency||'USD');
      const relabel=(k,base,req)=>{const el=form.querySelector(`[data-k="${k}"]`);if(!el)return;const lab=el.closest('.f').querySelector('label');if(lab)lab.innerHTML=base+' ('+sym+')'+(req?' <span class="rq">*</span>':'')};
-     relabel('saleValue','Total order value',true);relabel('advance','Advance / deposit received now',false)},
+     relabel('saleValue','Total order value',true);relabel('advance','Advance / deposit received now',false);
+     const inpS=form.querySelector('[data-k="state"]');const country=cur.custCountry||'United States';
+     if(inpS&&inpS.dataset.c!==country){inpS.dataset.c=country;const emb=C_STATES[country];if(emb){fillDL(inpS,emb)}else{fillDL(inpS,[]);geoFetchStates(country).then(st=>{if(inpS.dataset.c===country)fillDL(inpS,st)})}const inpC0=form.querySelector('[data-k="city"]');if(inpC0)inpC0.dataset.sc='';}
+     const inpC=form.querySelector('[data-k="city"]');const stv=cur.state||'';
+     if(inpC&&stv&&inpC.dataset.sc!==country+'|'+stv){inpC.dataset.sc=country+'|'+stv;fillDL(inpC,[]);geoFetchCities(country,stv).then(cs=>{if(inpC.dataset.sc===country+'|'+stv)fillDL(inpC,cs)})}},
    async onSave(v){
      const cn=(v.custName||'').trim();if(!cn){toast('Enter the customer name.',true);return false}
      if(!(v.lines||[]).length){toast('Add at least one item.',true);return false}

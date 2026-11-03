@@ -458,7 +458,7 @@ async function route(req, env, ctx) {
     }
     if (p === '/manifest.json' || p === '/manifest.webmanifest' || p === '/favicon.ico') return new Response('', { status: 404 });
     return new Response(APP_HTML, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache', 'x-frame-options': 'SAMEORIGIN', ...sec,
-      'content-security-policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://flagcdn.com; connect-src 'self'; frame-ancestors 'self'" } });
+      'content-security-policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://flagcdn.com; connect-src 'self' https://countriesnow.space; frame-ancestors 'self'" } });
   }
   if (!env.DB) return err('Server is not connected to its database yet (D1 binding "DB" missing).', 500);
   await ensureSchema(env);
