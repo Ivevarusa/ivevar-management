@@ -27,7 +27,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .brand b{display:block;color:var(--rail-brand);font-size:19px;letter-spacing:.01em}
 .brand small{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--rail-brand);opacity:.85;font-weight:600}
 .nav{padding:8px;display:flex;flex-direction:column;gap:1px}
-.nav .grp{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;opacity:.5;padding:12px 10px 4px}
+.nav a.gtop{margin-top:10px}
 .nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:14.5px;color:var(--rail-ink);text-decoration:none;font-size:13.5px}
 .nav a:hover{background:#ffffff12;color:#fff}
 .nav a.on{background:var(--accent);color:var(--accent-ink);font-weight:600;box-shadow:0 4px 14px #0005}
@@ -803,8 +803,8 @@ let ROUTE='dashboard',ROUTE_ARG=null,TAB={};
 function navCounts(){let a=alerts();if(ME.role!=='admin'){const C={orders:'orders',crm:'leads',production:'jobs',qc:'qc',quotes:'quotes',inventory:'vouchers',wastage:'wastage',karigars:'challans',dispatch:'dispatches'};a=a.filter(x=>{const r=x.id&&byId(C[x.mod],x.id);return r&&(r.createdBy===ME.id||(x.mod==='orders'&&orderSeller(r)===ME.id))})}const c={};a.forEach(x=>c[x.mod]=(c[x.mod]||0)+1);try{const cu=chatUnread();if(cu)c.chat=cu}catch(e){}return c}
 function renderNav(){
   const c=navCounts();let g='';let html='';
-  MODS.forEach(([k,l,grp])=>{if(!can(k))return;if(grp!==g){g=grp;html+=`<div class="grp">${esc(T(grp))}</div>`}
-    html+=`<a href="#${k}" class="${ROUTE===k?'on':''}">${esc(T(l))}${c[k]?`<span class="ct ${k!=='dashboard'?'hot':''}">${c[k]}</span>`:''}</a>`});
+  MODS.forEach(([k,l,grp])=>{if(!can(k))return;const sep=(g&&grp!==g)?' gtop':'';g=grp;
+    html+=`<a href="#${k}" class="${ROUTE===k?'on':''}${sep}">${esc(T(l))}${c[k]?`<span class="ct ${k!=='dashboard'?'hot':''}">${c[k]}</span>`:''}</a>`});
   $('#nav').innerHTML=html;const bl=$('#blogo');if(bl&&bl.getAttribute('src')!==LOGO)bl.src=LOGO}
 function go(mod,arg){ROUTE_ARG=arg||null;if(location.hash!=='#'+mod)location.hash=mod;else render()}
 window.addEventListener('hashchange',()=>{ROUTE=(location.hash||'#dashboard').slice(1)||'dashboard';$('#app').classList.remove('navopen');render();window.scrollTo(0,0)});

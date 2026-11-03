@@ -98,8 +98,8 @@ let ROUTE='dashboard',ROUTE_ARG=null,TAB={};
 function navCounts(){let a=alerts();if(ME.role!=='admin'){const C={orders:'orders',crm:'leads',production:'jobs',qc:'qc',quotes:'quotes',inventory:'vouchers',wastage:'wastage',karigars:'challans',dispatch:'dispatches'};a=a.filter(x=>{const r=x.id&&byId(C[x.mod],x.id);return r&&(r.createdBy===ME.id||(x.mod==='orders'&&orderSeller(r)===ME.id))})}const c={};a.forEach(x=>c[x.mod]=(c[x.mod]||0)+1);try{const cu=chatUnread();if(cu)c.chat=cu}catch(e){}return c}
 function renderNav(){
   const c=navCounts();let g='';let html='';
-  MODS.forEach(([k,l,grp])=>{if(!can(k))return;if(grp!==g){g=grp;html+=`<div class="grp">${esc(T(grp))}</div>`}
-    html+=`<a href="#${k}" class="${ROUTE===k?'on':''}">${esc(T(l))}${c[k]?`<span class="ct ${k!=='dashboard'?'hot':''}">${c[k]}</span>`:''}</a>`});
+  MODS.forEach(([k,l,grp])=>{if(!can(k))return;const sep=(g&&grp!==g)?' gtop':'';g=grp;
+    html+=`<a href="#${k}" class="${ROUTE===k?'on':''}${sep}">${esc(T(l))}${c[k]?`<span class="ct ${k!=='dashboard'?'hot':''}">${c[k]}</span>`:''}</a>`});
   $('#nav').innerHTML=html;const bl=$('#blogo');if(bl&&bl.getAttribute('src')!==LOGO)bl.src=LOGO}
 function go(mod,arg){ROUTE_ARG=arg||null;if(location.hash!=='#'+mod)location.hash=mod;else render()}
 window.addEventListener('hashchange',()=>{ROUTE=(location.hash||'#dashboard').slice(1)||'dashboard';$('#app').classList.remove('navopen');render();window.scrollTo(0,0)});
