@@ -902,7 +902,7 @@ function viewAdminDash(){
   const team=USERS.filter(u=>u.active!==false).map(u=>({u,...salesStats(u.id,from)})).filter(r=>r.count||r.leads);
   const al=alerts();
   return `<div class="sd-head"><div><h1>${hi}, ${esc((ME.name||'').split(' ')[0])}</h1><div class="note">${esc(roleLabel(ME))} · ${esc(SET.company.name)}</div></div></div>
-  <div class="grid g2" style="margin-bottom:16px">${punchCard()}${taskTiles(true)}</div>
+  <div style="margin-bottom:16px">${taskTiles(true)}</div>
   <div class="grid g2" style="margin-bottom:16px">${attendanceToday()}${tasksCard(true)}</div>
   <div class="card" style="margin-bottom:16px"><div class="cap">Cash balance</div>
    <div class="cashrow"><div><div class="note">Total</div><div class="kpi gold"><span class="v mv">${cm(cashBal())}${eyeBtn('EYE')}</span></div></div><div><div class="note">Cash</div><div class="kpi"><span class="v mv">${cm(cashBal('Cash'))}${eyeBtn('EYE')}</span></div></div><div><div class="note">Bank</div><div class="kpi"><span class="v mv">${cm(cashBal('Bank'))}${eyeBtn('EYE')}</span></div></div></div></div>
