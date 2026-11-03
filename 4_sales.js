@@ -188,7 +188,7 @@ function orderForm(o){
     {k:'currency',l:'Currency',t:'cur',req:1,d:'USD',w:2},
     {k:'custName',l:'Customer full name',t:'text',list:()=>S.customers.map(c=>[c.name,c.name]),req:1,w:2,hint:'Type the name — a new customer is created automatically if not found'},
     {k:'orderIdDisplay',l:'Order ID (auto)',ro:1,calc:v=>isNew?nextOrderNo():o.no},
-    {k:'custCC',l:'Country code',t:'sel',o:COUNTRY_CODES,d:'+1'},{k:'custPhone',l:'WhatsApp / phone number',t:'tel',w:2},{k:'custEmail',l:'Customer email',t:'email',w:2},
+    {k:'custCC',l:'Country code',t:'ccode',d:'+1'},{k:'custPhone',l:'WhatsApp / phone number',t:'tel',w:2},{k:'custEmail',l:'Customer email',t:'email',w:2},
     {k:'date',l:'Order date',t:'date',req:1},{k:'dueDate',l:'Promised delivery',t:'date',req:1},
     {k:'priority',l:'Priority',t:'sel',o:['Normal','High','Urgent']},{k:'status',l:'Status',t:'sel',o:ORDER_ST,ro:!isNew&&!can('orders','approve')},
     {k:'channel',l:'Sales channel',t:'sel',o:['ivevar.com','ivevar.us','ivevar.in','Etsy','Sales executive']},
