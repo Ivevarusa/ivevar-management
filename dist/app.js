@@ -1124,7 +1124,7 @@ function viewSalesDash(){
   const st=salesStats(ME.id,from),all=salesStats(ME.id,'');const t=today();
   const hour=new Date().getHours();const hi=hour<12?'Good morning':hour<17?'Good afternoon':'Good evening';
   // quick actions — only what this person is allowed to do
-  const qa=[can('crm','edit')&&['+ New lead','leadForm()','Customer enquiry'],can('orders','edit')&&['+ New order','orderForm()','Confirmed sale'],can('accounts','edit')&&['+ Money in',"cashForm('Income')",'Payment received'],can('accounts','edit')&&['− Money out',"cashForm('Expense')",'Expense paid']].filter(Boolean);
+  const qa=[can('crm','edit')&&['+ New lead','leadForm()','Customer enquiry'],can('orders','edit')&&['+ New order','orderForm()','Confirmed sale'],can('accounts','edit')&&['+ Entry',"cashForm('Entry')",'Money in / out']].filter(Boolean);
   // one to-do list for today
   const todo=[];
   S.leads.filter(l=>l.createdBy===ME.id&&!['Won','Lost'].includes(l.stage)&&l.nextFollow&&l.nextFollow<=t).forEach(l=>todo.push({sev:l.nextFollow<t?'bad':'warn',txt:`Call back <b>${esc(l.name)}</b>${l.phone?' · '+esc(l.phone):''}`,tag:l.nextFollow<t?'Overdue':'Today',go:`go('crm');setTimeout(()=>leadDetail(byId('leads','${l.id}')),80)`}));
@@ -1804,7 +1804,7 @@ function accForm(c,x){openForm({title:x&&x.id?`Edit ${x.no}`:'New '+({invoices:'
   await save(c,v,{reason:x&&x.id?'edit':''})}})}
 const INCOME_CATS=['Sales (ivevar.com)','Sales (ivevar.in)','Sales (Etsy)','Sales (other)','Customer advance','Opening balance','Other income'];
 /* ---- Bank & cash accounts (user-managed, Vyapar-style: many banks + cash) ---- */
-const ACCT_CURS=['INR','USD','AUD','GBP','EUR','CAD','AED'];
+const ACCT_CURS=['INR','USD','USDT','BTC','ETH','AUD','GBP','EUR','CAD','AED'];
 const BANK_ACCTS=()=>(Array.isArray(SET.bankAccounts)&&SET.bankAccounts.length?SET.bankAccounts:(SET.cashAccounts||['Cash','Bank']).map(n=>({name:n,type:/cash/i.test(n)?'Cash':'Bank',currency:'INR'})));
 const cashAccts=()=>BANK_ACCTS().map(a=>a.name);
 const acctOf=n=>BANK_ACCTS().find(a=>a.name===n)||{name:n,type:'Bank',currency:'INR'};
@@ -1818,24 +1818,33 @@ const fmtGroup=g=>{const ks=Object.keys(g).filter(c=>Math.abs(g[c])>0.5||c==='IN
 const combineINR=g=>Object.keys(g).reduce((t,c)=>t+num(g[c])*fxOf(c),0);
 const isMultiCur=()=>Object.keys(balGroup()).some(c=>c!=='INR');
 function balByCur(){return fmtGroup(balGroup())}
-/* set the USD→₹ rate used to combine currencies in totals & reports */
+/* USD & crypto → ₹ rates. Auto-updated from live market every morning; manual override here. */
 function acctRateForm(){
-  openForm({title:'Conversion rate (USD → ₹)',sub:'Report aur combined total me US-bank ke dollar ko is rate pe ₹ me convert kiya jaata hai.',value:{usd:usdRate()},fields:[
-   {k:'usd',l:'1 USD = ₹',t:'num',req:1,hint:'Jis rate pe aap dollar ko rupee me convert karte ho'}],
-   async onSave(v){const r=num(v.usd)||usdRate();await saveSettings({usdInr:r,fxRates:{...(SET.fxRates||{}),USD:r,INR:1}},'conversion rate')}})}
+  const fx=SET.fxRates||{};const upd=SET.ratesAt?new Date(SET.ratesAt):null;
+  const strip=`<div class="note" style="margin-bottom:8px">${upd?'Live · updated '+upd.toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'Not fetched yet'}: <b>$1 = ₹${fq(usdRate())}</b>${fx.USDT?` · USDT ₹${fq(fx.USDT)}`:''}${fx.BTC?` · BTC ₹${fq(fx.BTC)}`:''}${fx.ETH?` · ETH ₹${fq(fx.ETH)}`:''}</div><div style="margin-bottom:10px"><button type="button" class="btn sm" onclick="refreshRatesNow()">↻ Refresh from live market now</button></div>`;
+  openForm({title:'Conversion rates',sub:'Dollar & crypto → ₹. Har subah live market rate apne aap aata hai; yahan manual bhi set kar sakte ho.',extra:strip,
+   value:{auto:SET.ratesAuto!==false,usd:usdRate(),usdt:num(fx.USDT)||'',btc:num(fx.BTC)||'',eth:num(fx.ETH)||''},fields:[
+   {k:'auto',l:'Auto-update every morning (live market rate)',t:'bool',d:true},
+   {k:'usd',l:'1 USD = ₹',t:'num',req:1},{k:'usdt',l:'1 USDT = ₹',t:'num'},{k:'btc',l:'1 BTC = ₹',t:'num'},{k:'eth',l:'1 ETH = ₹',t:'num'}],
+   async onSave(v){const r=num(v.usd)||usdRate();const fxN={...(SET.fxRates||{}),USD:r,INR:1};if(num(v.usdt))fxN.USDT=num(v.usdt);if(num(v.btc))fxN.BTC=num(v.btc);if(num(v.eth))fxN.ETH=num(v.eth);await saveSettings({usdInr:r,fxRates:fxN,ratesAuto:!!v.auto},'conversion rates')}})}
 function cashSigned(e,acct){if(e.type==='Transfer')return acct?(e.to===acct?num(e.amount):e.account===acct?-num(e.amount):0):0;const v=num(e.amount);return e.type==='Income'?v:-v}
 function cashBal(acct){return S.cash.filter(e=>!acct||e.account===acct||e.to===acct).reduce((t,e)=>t+cashSigned(e,acct),0)}
 let CASH_M=today().slice(0,7),CASH_A='';
 function cashForm(type,x){
   const isT=type==='Transfer';
+  const isE=type==='Entry';
   const fields=isT?[{k:'date',l:'Date',t:'date',req:1,d:today()},{k:'amount',l:'Amount',t:'num',req:1},{k:'account',l:'From',t:'sel',o:cashAccts,req:1},{k:'to',l:'To',t:'sel',o:cashAccts,req:1},{k:'note',l:'Note',w:4}]
+   :isE?[{k:'io',l:'Type',t:'sel',o:['Money in','Money out'],req:1,d:'Money in'},{k:'date',l:'Date',t:'date',req:1,d:today()},{k:'amount',l:'Amount',t:'num',req:1},{k:'account',l:'Account',t:'sel',o:cashAccts,req:1,d:'Cash'},
+     {k:'category',l:'Category',list:()=>[...INCOME_CATS,...(SET.expenseCats||[])],req:1,hint:'Pick or type a category'},{k:'party',l:'Party (received from / paid to)',w:2},{k:'order',l:'Order (optional)',t:'ref',o:refOpts('orders',o=>o.no+' · '+custName(o.customer))},{k:'ref',l:'Reference / UTR'},{k:'note',l:'Note',t:'ta',w:4}]
    :[{k:'date',l:'Date',t:'date',req:1,d:today()},{k:'amount',l:'Amount ('+SET.currency+')',t:'num',req:1},{k:'category',l:'Category',t:'sel',o:()=>type==='Income'?INCOME_CATS:SET.expenseCats,req:1},{k:'account',l:type==='Income'?'Received in':'Paid from',t:'sel',o:cashAccts,req:1,d:'Cash'},
      {k:'party',l:type==='Income'?'Received from':'Paid to',w:2},{k:'order',l:'Order (optional)',t:'ref',o:refOpts('orders',o=>o.no+' · '+custName(o.customer))},{k:'ref',l:'Reference / UTR'},{k:'note',l:'Note',t:'ta',w:4}];
-  openForm({title:(x&&x.id?'Edit ':'')+({Income:'Money in',Expense:'Money out',Transfer:'Move money between accounts'}[type]),fields,value:x||{type,account:'Cash'},async onSave(v){
+  const title=isE?(x&&x.id?'Edit entry':'New entry'):(x&&x.id?'Edit ':'')+({Income:'Money in',Expense:'Money out',Transfer:'Move money between accounts'}[type]);
+  openForm({title,fields,value:x||{type:isE?'Income':type,account:'Cash',io:'Money in'},async onSave(v){
+    const ty=isE?(v.io==='Money out'?'Expense':'Income'):type;if(isE)delete v.io;
     if(num(v.amount)<=0){toast('Amount must be more than 0.',true);return false}
     if(isT&&v.account===v.to){toast('Pick two different accounts.',true);return false}
-    if(!isT&&type==='Expense'){const bal=cashBal(v.account)+(x&&x.id&&x.account===v.account?num(x.amount):0);if(num(v.amount)>bal+0.5)toast(`Note: ${v.account} balance will go below zero (${money(bal-num(v.amount))}).`,true)}
-    await save('cash',{...v,type})}})}
+    if(!isT&&ty==='Expense'){const bal=cashBal(v.account)+(x&&x.id&&x.account===v.account?num(x.amount):0);if(num(v.amount)>bal+0.5)toast(`Note: ${v.account} balance will go below zero (${money(bal-num(v.amount))}).`,true)}
+    await save('cash',{...v,type:ty})}})}
 function cashView(e){
   modal({title:`${e.no} · ${e.type==='Income'?'Money in':e.type==='Expense'?'Money out':'Transfer'}`,sub:`${fdate(e.date)} · ${esc(userName(e.createdBy))}`,body:`<dl class="dl"><dt>Amount</dt><dd><b style="color:${e.type==='Income'?'var(--good)':e.type==='Expense'?'var(--bad)':'inherit'}">${money(e.amount)}</b></dd>${e.type==='Transfer'?`<dt>From → To</dt><dd>${esc(e.account)} → ${esc(e.to)}</dd>`:`<dt>Category</dt><dd>${esc(e.category||'')}</dd><dt>${e.type==='Income'?'Received in':'Paid from'}</dt><dd>${esc(e.account||'')}</dd><dt>${e.type==='Income'?'From':'To'}</dt><dd>${esc(e.party||'—')}</dd><dt>Order</dt><dd>${esc(orderOf(e.order)?.no||'—')}</dd><dt>Reference</dt><dd>${esc(e.ref||'—')}</dd>`}<dt>Note</dt><dd>${esc(e.note||'—')}</dd></dl>`,
    foot:can('accounts','approve')?btn('Delete','data-del','dng')+btn('Edit','data-e','pri'):'',
@@ -1863,7 +1872,7 @@ function viewAccounts(){
     body=`<div class="grid g2"><div>${table([{l:'Date',h:r=>fdate(r.date)},{l:'Category',k:'category'},{l:ty==='Income'?'From':'To',k:'party'},{l:'Account',k:'account'},{l:'Amount',n:1,h:r=>money(r.amount)}],rows,{onClick:cashView,empty:'Nothing this month'})}</div><div class="card"><h2>By category · ${CASH_M}</h2>${Object.keys(byCat).length?hbars(Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({l,v,f:money}))):'<div class="empty">—</div>'}</div></div>`}
   else{const months=[...new Set(S.cash.map(e=>(e.date||'').slice(0,7)).filter(Boolean))].sort().reverse().slice(0,12);
     body=table([{l:'Month',k:'m'},{l:'Money in',n:1,h:r=>`<span style="color:var(--good)">${money(r.i)}</span>`},{l:'Money out',n:1,h:r=>`<span style="color:var(--bad)">${money(r.o)}</span>`},{l:'Net',n:1,h:r=>`<b style="color:${r.i-r.o<0?'var(--bad)':'var(--good)'}">${money(r.i-r.o)}</b>`}],months.map(m=>{const x=S.cash.filter(e=>(e.date||'').startsWith(m));return{m,i:x.filter(e=>e.type==='Income'&&e.category!=='Opening balance').reduce((t,e)=>t+num(e.amount),0),o:x.filter(e=>e.type==='Expense').reduce((t,e)=>t+num(e.amount),0)}}),{empty:'No entries yet'})+`<div class="note" style="margin-top:8px">Opening balance entries are not counted as income here.</div>`}
-  const acts=can('accounts','edit')?btn(ic('building')+' Accounts','onclick="accountsManager()"')+btn(ic('swap')+' Rate ₹'+fq(rate)+'/$','onclick="acctRateForm()"')+btn('⇄ Transfer',`onclick="cashForm('Transfer')"`)+btn('− Money out',`onclick="cashForm('Expense')"`)+btn('+ Money in',`onclick="cashForm('Income')"`,'pri'):'';
+  const acts=can('accounts','edit')?btn(ic('building')+' Accounts','onclick="accountsManager()"')+btn(ic('swap')+' Rate ₹'+fq(rate)+'/$','onclick="acctRateForm()"')+btn('⇄ Transfer',`onclick="cashForm('Transfer')"`)+btn('+ Entry',`onclick="cashForm('Entry')"`,'pri'):'';
   return phead('Accounts','Money in, money out and your cash / bank balance.',acts)+tiles+tabsHTML('acc',[['book','Cash book'],['in','Income'],['out','Expenses'],['sum','Monthly summary']],tab)+(tab!=='sum'?tools:'')+body}
 
 /* ---- Accounts manager: add/edit/remove bank & cash accounts ---- */
@@ -2151,11 +2160,14 @@ function renderLogin(setup){
 async function logout(expired){try{if(!expired&&TOKEN)await api('/api/logout',{},{noAuthRedirect:true})}catch(e){}TOKEN=null;try{localStorage.removeItem('erp_token')}catch(e){}COLLS.forEach(c=>S[c]=[]);LOADED=false;SINCE=0;renderLogin()}
 function pwForm(){openForm({title:'Change your password',fields:[{k:'old',l:'Current password',req:1,w:4},{k:'pw',l:'New password (min 8)',req:1,w:4}],value:{},async onSave(v){if(v.pw.length<8){toast('At least 8 characters.',true);return false}try{await api('/api/password',{old:v.old,password:v.pw});toast('Password changed')}catch(e){toast(e.message,true);return false}}})}
 try{if(navigator.serviceWorker){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});if(window.caches)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))).catch(()=>{})}}catch(e){}
+/* daily morning auto-refresh of live FX + crypto rates (server also guards against duplicate fetches) */
+async function maybeRefreshRates(){try{if(SET.ratesAuto===false)return;if(SET.ratesDate===today())return;const r=await api('/api/rates',{});if(r&&r.settings){SET={...defaultSettings(),...r.settings};scheduleRender()}}catch(e){}}
+async function refreshRatesNow(){try{const r=await api('/api/rates',{force:true});if(r&&r.settings){SET={...defaultSettings(),...r.settings};toast('Rates updated from live market ✓');scheduleRender()}else toast('Could not fetch rates right now.',true)}catch(e){toast('Could not fetch rates right now.',true)}}
 (async function boot(){
   ROUTE=(location.hash||'#dashboard').slice(1)||'dashboard';
   $('#langSel').value=LANG;
   if(!TOKEN){try{const s=await api('/api/status',null,{noAuthRedirect:true});renderLogin(s.needsSetup)}catch(e){renderLogin();$('#lErr')&&($('#lErr').textContent=e.message)}return}
-  await sync();if(LOADED)render();else logout(true)})();
+  await sync();if(LOADED){render();maybeRefreshRates()}else logout(true)})();
 
 async function showHook(){try{const r=await api('/api/shopify/hook');$('#hookBox').innerHTML=`<code>${esc(r.url)}</code><div>Keep this address private.</div>`}catch(e){toast(e.message,true)}}
 function saveIntegrations(){const ig={...(SET.integrations||{})};$$('[data-ig]').forEach(i=>ig[i.dataset.ig]=i.value.trim());saveSettings({integrations:ig},'integration settings')}

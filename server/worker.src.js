@@ -86,6 +86,43 @@ async function getSettings(env) {
   const r = await env.DB.prepare(`SELECT v FROM config WHERE k='settings'`).first();
   return r ? JSON.parse(r.v) : null;
 }
+/* ---- live exchange rates: FX (open.er-api.com) + crypto (CoinGecko), both free/no-key ---- */
+const RATE_CURS = ['USD','AUD','GBP','EUR','CAD','AED','SGD','NZD','CHF','JPY','HKD','ZAR','SAR'];
+async function fetchLiveRates(env, force) {
+  const settings = (await getSettings(env)) || {};
+  const todayStr = new Date().toISOString().slice(0, 10);
+  if (!force && settings.ratesDate === todayStr) return { skipped: true, settings };
+  const fxRates = { ...(settings.fxRates || {}), INR: 1 };
+  let usdInr = null;
+  // FX — USD base; j.rates[c] = units of c per 1 USD; cur→INR = INR_per_USD / c_per_USD
+  try {
+    const r = await fetch('https://open.er-api.com/v6/latest/USD');
+    const j = await r.json();
+    if (j && j.rates && Number(j.rates.INR) > 0) {
+      usdInr = Math.round(Number(j.rates.INR) * 100) / 100;
+      fxRates.USD = usdInr;
+      for (const c of RATE_CURS) {
+        if (c === 'USD') continue;
+        const per = Number(j.rates[c]);
+        if (per > 0) fxRates[c] = Math.round((Number(j.rates.INR) / per) * 100) / 100;
+      }
+    }
+  } catch (e) { /* keep previous FX */ }
+  // Crypto — USDT / BTC / ETH priced in INR
+  try {
+    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether,bitcoin,ethereum&vs_currencies=inr');
+    const j = await r.json();
+    if (j) {
+      if (j.tether && Number(j.tether.inr) > 0) fxRates.USDT = Math.round(Number(j.tether.inr) * 100) / 100;
+      if (j.bitcoin && Number(j.bitcoin.inr) > 0) fxRates.BTC = Math.round(Number(j.bitcoin.inr) * 100) / 100;
+      if (j.ethereum && Number(j.ethereum.inr) > 0) fxRates.ETH = Math.round(Number(j.ethereum.inr) * 100) / 100;
+    }
+  } catch (e) { /* keep previous crypto */ }
+  if (!usdInr && !fxRates.USDT && !fxRates.BTC) return { ok: false, settings };
+  const next = { ...settings, fxRates, usdInr: usdInr || settings.usdInr || 88, ratesDate: todayStr, ratesAt: Date.now() };
+  await env.DB.prepare(`INSERT INTO config(k,v,updated_at) VALUES('settings',?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v, updated_at=excluded.updated_at`).bind(JSON.stringify(next), Date.now()).run();
+  return { ok: true, settings: next };
+}
 function permsOf(settings) { return (settings && settings.perms) || defaultPerms(); }
 function can(user, settings, mod, lvl = 'view') {
   if (!user || !user.active) return false;
@@ -603,6 +640,12 @@ async function route(req, env, ctx) {
     await writeAudit(env, user, b.coll, b.id, before.no || before.name || '', 'delete', diff(before, {}), b.reason);
     return json({ ok: true });
   }
+  if (p === '/api/rates' && method === 'POST') {
+    // any signed-in user may refresh live rates (used by the daily morning auto-refresh)
+    const b = await body().catch(() => ({}));
+    const res = await fetchLiveRates(env, !!b.force);
+    return json({ ok: res.ok !== false, skipped: !!res.skipped, settings: res.settings || settings });
+  }
   if (p === '/api/settings' && method === 'POST') {
     if (!can(user, settings, 'setup', 'approve') && !can(user, settings, 'masters', 'edit')) return err('You cannot change settings.', 403);
     const b = await body(); const next = b.settings || {};
@@ -672,5 +715,12 @@ export default {
   async fetch(req, env, ctx) {
     try { return await route(req, env, ctx); }
     catch (e) { console.error(e && e.stack || e); return err('Server error: ' + (e && e.message || e), 500); }
+  },
+  // daily morning cron: auto-refresh live FX + crypto rates (unless the user turned auto off)
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil((async () => {
+      try { const s = await getSettings(env); if (!s || s.ratesAuto !== false) await fetchLiveRates(env, true); }
+      catch (e) { console.error('rates cron', e && e.stack || e); }
+    })());
   }
 };

@@ -17,3 +17,7 @@ database_id = "48393769-634c-40ac-9a12-682ce925e2f8"
 [[r2_buckets]]
 binding = "FILES"
 bucket_name = "ivevar-files"
+
+# Daily morning cron (01:30 UTC = 07:00 IST) — auto-refresh live FX + crypto rates
+[triggers]
+crons = ["30 1 * * *"]

@@ -461,7 +461,7 @@ function viewSalesDash(){
   const st=salesStats(ME.id,from),all=salesStats(ME.id,'');const t=today();
   const hour=new Date().getHours();const hi=hour<12?'Good morning':hour<17?'Good afternoon':'Good evening';
   // quick actions — only what this person is allowed to do
-  const qa=[can('crm','edit')&&['+ New lead','leadForm()','Customer enquiry'],can('orders','edit')&&['+ New order','orderForm()','Confirmed sale'],can('accounts','edit')&&['+ Money in',"cashForm('Income')",'Payment received'],can('accounts','edit')&&['− Money out',"cashForm('Expense')",'Expense paid']].filter(Boolean);
+  const qa=[can('crm','edit')&&['+ New lead','leadForm()','Customer enquiry'],can('orders','edit')&&['+ New order','orderForm()','Confirmed sale'],can('accounts','edit')&&['+ Entry',"cashForm('Entry')",'Money in / out']].filter(Boolean);
   // one to-do list for today
   const todo=[];
   S.leads.filter(l=>l.createdBy===ME.id&&!['Won','Lost'].includes(l.stage)&&l.nextFollow&&l.nextFollow<=t).forEach(l=>todo.push({sev:l.nextFollow<t?'bad':'warn',txt:`Call back <b>${esc(l.name)}</b>${l.phone?' · '+esc(l.phone):''}`,tag:l.nextFollow<t?'Overdue':'Today',go:`go('crm');setTimeout(()=>leadDetail(byId('leads','${l.id}')),80)`}));
