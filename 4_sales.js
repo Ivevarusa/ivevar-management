@@ -182,7 +182,8 @@ function nextOrderNo(){const nums=S.orders.map(o=>{const m=/^IVM0*(\d+)$/.exec(o
 function orderForm(o){
   const isNew=!o;o=o||{currency:'USD',date:today(),status:'Confirmed',priority:'Normal',stage:'Order received',channel:'ivevar.com',lines:[{qty:1}]};
   const cu0=o.customer?byId('customers',o.customer):null;
-  const val={...o,custName:o.customer?custName(o.customer):'',custCC:o.phoneCC||'+1',custPhone:o.phoneNum||'',custEmail:o.email||(cu0&&cu0.email)||'',custCountry:o.country||(cu0&&cu0.country)||'USA',addr1:o.addr1||'',addr2:o.addr2||'',city:o.city||'',state:o.state||'',zip:o.zip||''};
+  const val={...o,custName:o.customer?custName(o.customer):'',custCC:o.phoneCC||'+1',custPhone:o.phoneNum||'',custEmail:o.email||(cu0&&cu0.email)||'',custCountry:o.country||(cu0&&cu0.country)||'United States',addr1:o.addr1||'',addr2:o.addr2||'',city:o.city||'',state:o.state||'',zip:o.zip||''};
+  if(val.custCountry==='USA'||val.custCountry==='US')val.custCountry='United States';if(val.custCountry==='UK')val.custCountry='United Kingdom';
   openForm({title:isNew?'New order':`Edit ${o.no}`,wide:1,value:val,fields:[
     {k:'currency',l:'Currency',t:'cur',req:1,d:'USD',w:2},
     {k:'custName',l:'Customer full name',t:'text',list:()=>S.customers.map(c=>[c.name,c.name]),req:1,w:2,hint:'Type the name — a new customer is created automatically if not found'},
@@ -210,7 +211,7 @@ function orderForm(o){
    onChange(cur,form){const sym=curSym(cur.currency||'USD');
      const relabel=(k,base,req)=>{const el=form.querySelector(`[data-k="${k}"]`);if(!el)return;const lab=el.closest('.f').querySelector('label');if(lab)lab.innerHTML=base+' ('+sym+')'+(req?' <span class="rq">*</span>':'')};
      relabel('saleValue','Total order value',true);relabel('advance','Advance / deposit received now',false);
-     const inpS=form.querySelector('[data-k="state"]');const country=cur.custCountry||'United States';
+     const inpS=form.querySelector('[data-k="state"]');let country=cur.custCountry||'United States';if(country==='USA'||country==='US')country='United States';if(country==='UK')country='United Kingdom';
      if(inpS&&inpS.dataset.c!==country){inpS.dataset.c=country;const emb=C_STATES[country];if(emb){fillDL(inpS,emb)}else{fillDL(inpS,[]);geoFetchStates(country).then(st=>{if(inpS.dataset.c===country)fillDL(inpS,st)})}const inpC0=form.querySelector('[data-k="city"]');if(inpC0)inpC0.dataset.sc='';}
      const inpC=form.querySelector('[data-k="city"]');const stv=cur.state||'';
      if(inpC&&stv&&inpC.dataset.sc!==country+'|'+stv){inpC.dataset.sc=country+'|'+stv;fillDL(inpC,[]);geoFetchCities(country,stv).then(cs=>{if(inpC.dataset.sc===country+'|'+stv)fillDL(inpC,cs)})}},

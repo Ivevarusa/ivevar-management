@@ -44,7 +44,7 @@ const C_STATES={'United States':['Alabama','Alaska','Arizona','Arkansas','Califo
 async function geoFetchStates(country){try{const r=await fetch('https://countriesnow.space/api/v0.1/countries/states',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({country})});const j=await r.json();return((j.data&&j.data.states)||[]).map(s=>s.name)}catch(e){return[]}}
 async function geoFetchCities(country,state){try{const r=await fetch('https://countriesnow.space/api/v0.1/countries/state/cities',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({country,state})});const j=await r.json();return(j.data||[])}catch(e){return[]}}
 function fillDL(inp,items){if(!inp)return;const dl=document.getElementById(inp.getAttribute('list'));if(dl)dl.innerHTML=items.map(s=>'<option value="'+String(s).replace(/"/g,'&quot;')+'"></option>').join('')}
-const PAY_METHODS=['Zelle','Stripe Payment Link','PayPal','Bank Transfer','Crypto','Shopify Website','Wise','Card','Cash','Other'];
+const PAY_METHODS=['PayPal','Zelle','Bank Transfer','Payment Link','Crypto','Cash','Website Order (Direct)'];
 const COURIERS=['FedEx','UPS','DHL','Blue Dart','DTDC','India Post','Other'];
 const curFlag=code=>{const cc=CUR_CC[code]||'';return cc?`<img class="cflag" src="https://flagcdn.com/24x18/${cc}.png" srcset="https://flagcdn.com/48x36/${cc}.png 2x" width="24" height="18" alt="" loading="lazy">`:'<span class="cflag noflag"></span>'};
 function curBtn(code){return `<button type="button" class="curbtn">${curFlag(code)}<span class="curlbl">${esc(code)}</span><span class="curcar">▾</span></button>`}
