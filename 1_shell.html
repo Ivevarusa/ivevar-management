@@ -45,6 +45,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .nav a svg{width:18px;height:18px;flex:none;opacity:.9}
 .nav a.on svg{opacity:1}
 .navic{display:inline-flex;align-items:center;justify-content:center}
+svg.icn{width:18px;height:18px}
+.cap svg.icn{width:17px;height:17px;color:var(--accent);flex:none}
+h2 svg.icn,h3 svg.icn{width:18px;height:18px;vertical-align:-3px}
 .main{min-width:0;display:flex;flex-direction:column}
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
@@ -245,8 +248,9 @@ tbody tr.click:hover td{background:var(--surface2)}
 @media (max-width:640px){.attlist{grid-template-columns:1fr}}
 .cap{font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:8px}
 .mv{display:inline-flex;align-items:center;gap:10px}
-.eyei{border:1px solid var(--line);background:var(--surface2);border-radius:8px;width:34px;height:30px;cursor:pointer;font-size:15px;line-height:1;flex:none;font-family:var(--f-ui)}
-.eyei:hover{border-color:var(--accent);background:var(--accent-soft)}
+.eyei{border:1px solid var(--line);background:var(--surface2);border-radius:8px;width:34px;height:30px;cursor:pointer;line-height:1;flex:none;display:inline-flex;align-items:center;justify-content:center;color:var(--muted)}
+.eyei svg{width:16px;height:16px}
+.eyei:hover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
 .blurv{filter:blur(9px);user-select:none;transition:filter .2s}
 .eye{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted)}
 .eye:hover{border-color:var(--accent);color:var(--accent)}
@@ -278,6 +282,9 @@ tbody tr.click:hover td{background:var(--surface2)}
 .sd-big .v{font-family:var(--f-num);font-size:28px;font-weight:500}
 .sd-big.gold{background:var(--accent-soft);border-color:transparent}
 .sd-big.gold .v{color:var(--accent)}
+.kchip{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent);margin-bottom:2px}
+.kchip svg{width:19px;height:19px}
+.sd-big.gold .kchip{background:var(--surface)}
 .sd-empty{margin-top:16px;border-style:dashed}
 .sd-empty p{color:var(--muted);margin:6px 0 14px;max-width:60ch}
 .sd-dl{font-size:14px;row-gap:8px}

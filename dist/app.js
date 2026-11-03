@@ -54,7 +54,13 @@ const ICONS={
  coin:'<circle cx="12" cy="12" r="9"/><path d="M14.8 9.3A2.6 2.6 0 0 0 12 8c-1.7 0-2.6 1-2.6 2s.9 1.8 2.6 2 2.6.9 2.6 2-1 2-2.6 2a2.6 2.6 0 0 1-2.8-1.3"/><path d="M12 6.4v11.2"/>',
  card:'<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/>',
  box:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/>',
- note:'<path d="M4 4h16v12l-4 4H4z"/><path d="M16 20v-4h4"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="12" y2="13"/>'};
+ note:'<path d="M4 4h16v12l-4 4H4z"/><path d="M16 20v-4h4"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="12" y2="13"/>',
+ eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+ eyeoff:'<path d="M9.9 4.2A10.9 10.9 0 0 1 12 4c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.2 3.2M6.6 6.6A18.5 18.5 0 0 0 2 11s3.5 7 10 7a10.9 10.9 0 0 0 4.1-.8"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><line x1="2" y1="2" x2="22" y2="22"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+ alert:'<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17"/>',
+ wallet:'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>',
+ check:'<path d="M20 6 9 17l-5-5"/>'};
 const ic=(name,cls)=>`<svg class="icn ${cls||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]||''}</svg>`;
 applyPrefs();
 let _ac;function beep(){try{_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();const o=_ac.createOscillator(),g=_ac.createGain();o.connect(g);g.connect(_ac.destination);o.frequency.value=880;g.gain.value=0.05;o.start();o.frequency.exponentialRampToValueAtTime(1320,_ac.currentTime+0.09);g.gain.exponentialRampToValueAtTime(0.0001,_ac.currentTime+0.25);o.stop(_ac.currentTime+0.27)}catch(e){}}
@@ -889,7 +895,7 @@ function viewSalesDash(){
   all.orders.filter(o=>!['Delivered','Closed','Cancelled','Dispatched'].includes(o.status)&&o.dueDate&&daysTo(o.dueDate)<=3).forEach(o=>{const d=daysTo(o.dueDate);todo.push({sev:d<0?'bad':'warn',txt:`Order <b>${esc(o.no)}</b> for ${esc(custName(o.customer))} is ${d<0?'late':'due soon'}`,tag:d<0?`${-d} day${d===-1?'':'s'} late`:d===0?'Today':`In ${d} day${d===1?'':'s'}`,go:`orderDetail(byId('orders','${o.id}'))`})});
   all.orders.filter(o=>orderSale(o)-orderReceived(o)>0.5&&['Dispatched','Delivered'].includes(o.status)).forEach(o=>todo.push({sev:'info',txt:`Collect <b>${money(orderSale(o)-orderReceived(o))}</b> from ${esc(custName(o.customer))} (${esc(o.no)})`,tag:'Payment',go:`orderDetail(byId('orders','${o.id}'))`}));
   S.quotes.filter(q=>q.createdBy===ME.id&&q.status==='Sent'&&q.validTill&&daysTo(q.validTill)<=2).forEach(q=>todo.push({sev:'warn',txt:`Quotation <b>${esc(q.no)}</b> for ${esc(custName(q.customer))} ${daysTo(q.validTill)<0?'has expired':'expires soon'}`,tag:'Quotation',go:`quoteView(byId('quotes','${q.id}'))`}));
-  const big=(v,l,c='')=>`<div class="card sd-big ${c}"><span class="l">${esc(l)}</span><span class="v">${v}</span></div>`;
+  const big=(v,l,c='',icon='')=>`<div class="card sd-big ${c}">${icon?`<span class="kchip">${ic(icon)}</span>`:''}<span class="l">${esc(l)}</span><span class="v">${v}</span></div>`;
   const per=[['today','Today'],['week','Week'],['month','Month'],['year','Year'],['all','All']];
   const months=[];for(let i=5;i>=0;i--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const m=ymd(d).slice(0,7);months.push({l:d.toLocaleDateString('en-IN',{month:'short'}),v:all.orders.filter(o=>(o.date||'').startsWith(m)).reduce((a,o)=>a+orderSale(o),0),f:money})}
   const hasHistory=months.some(m=>m.v>0);
@@ -900,7 +906,7 @@ function viewSalesDash(){
   ${qa.length?`<div class="sd-qa">${qa.map(([l,fn,sub])=>`<button class="sd-act" onclick="${fn}"><b>${l}</b><span>${sub}</span></button>`).join('')}</div>`:''}
   <div class="grid g2" style="margin-bottom:16px">${punchCard()}${taskTiles(false)}</div>
   <div style="margin-bottom:16px">${tasksCard(false)}</div>
-  <div class="sd-kpis">${big(dmoney(st.sale),'Sales','gold')}${big(dmoney(st.rev),'Money received')}${big(`<span style="color:${st.profit<0?'var(--bad)':'var(--good)'}">${dmoney(st.profit)}</span>`,'Profit')}${big(st.count,'Orders')}</div>
+  <div class="sd-kpis">${big(dmoney(st.sale),'Sales','gold','coin')}${big(dmoney(st.rev),'Money received','','wallet')}${big(`<span style="color:${st.profit<0?'var(--bad)':'var(--good)'}">${dmoney(st.profit)}</span>`,'Profit','','reports')}${big(st.count,'Orders','','orders')}</div>
   ${nothingYet?`<div class="card sd-empty"><h2>Let's get started</h2><p>Add your first customer enquiry as a lead, or record a confirmed sale as an order. Your sales, money received and profit will appear here automatically.</p><div class="sd-qa" style="margin:0">${qa.slice(0,3).map(([l,fn])=>`<button class="btn pri" onclick="${fn}">${l}</button>`).join(' ')}</div></div>`:''}
   <div class="grid g2" style="margin-top:16px">
    <div class="card"><h2>To do <span class="pill ${todo.length?'warn':'good'}">${todo.length}</span></h2>${todo.length?`<div class="alerts">${todo.slice(0,10).map(x=>`<div class="alert" onclick="${x.go}"><span class="sev ${x.sev}"></span><span style="flex:1">${x.txt}</span><span class="pill">${esc(x.tag)}</span></div>`).join('')}</div>`:'<div class="empty"><b>All done 👍</b>No calls, late orders or payments waiting.</div>'}</div>
@@ -977,7 +983,7 @@ function tasksCard(admin){const tt=today();let list=S.tasks.filter(t=>admin||t.a
   const open=list.filter(t=>t.status!=='Done').sort((a,b)=>({Urgent:0,High:1,Normal:2}[a.priority]-{Urgent:0,High:1,Normal:2}[b.priority])||(a.due||'9').localeCompare(b.due||'9'));
   const doneToday=list.filter(t=>t.status==='Done'&&(t.doneAt||'').slice(0,10)===tt);
   const row=t=>`<div class="task ${t.status==='Done'?'done':''}"><input type="checkbox" ${t.status==='Done'?'checked':''} onclick="toggleTask('${t.id}')" aria-label="Mark done"><div style="flex:1;min-width:0;cursor:pointer" onclick="taskForm(byId('tasks','${t.id}'))"><b>${esc(t.title)}</b>${t.note?`<div class="meta">${esc(t.note)}</div>`:''}<div class="meta">${admin?esc(userName(t.assignedTo))+' · ':''}${t.due?(t.due<tt&&t.status!=='Done'?'<span style="color:var(--bad)">Overdue · '+fdate(t.due)+'</span>':'Due '+fdate(t.due)):'No due date'}</div></div>${t.priority!=='Normal'?`<span class="pill ${t.priority==='Urgent'?'bad':'warn'}">${esc(t.priority)}</span>`:''}</div>`;
-  return `<div class="card" id="mywork"><div class="cap">${admin?'All work':'My work'} <span class="pill ${open.length?'warn':'good'}">${open.length}</span><button class="btn sm pri" style="margin-left:auto;text-transform:none;letter-spacing:0" onclick="taskForm()">+ New task</button></div>${open.length||doneToday.length?`<div class="alerts">${open.slice(0,12).map(row).join('')}${doneToday.map(row).join('')}</div>`:'<div class="empty">No pending work 🎉</div>'}</div>`}
+  return `<div class="card" id="mywork"><div class="cap">${admin?'All work':'My work'} <span class="pill ${open.length?'warn':'good'}">${open.length}</span><button class="btn sm pri" style="margin-left:auto;text-transform:none;letter-spacing:0" onclick="taskForm()">+ New task</button></div>${open.length||doneToday.length?`<div class="alerts">${open.slice(0,12).map(row).join('')}${doneToday.map(row).join('')}</div>`:'<div class="empty">All caught up — no pending work.</div>'}</div>`}
 
 /* ============ ADMIN DASHBOARD ============ */
 var EYE=false,SEYE=false;let AD_P='month';
@@ -987,7 +993,7 @@ function pendingPaymentsCard(){
   rows.sort((a,b)=>(b.p.createdAt||'').localeCompare(a.p.createdAt||''));
   const tm=iso=>{try{return iso?new Date(iso).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}catch(e){return ''}};
   const canOk=can('accounts','approve')||can('orders','approve');
-  return `<div class="card" id="pendpay"><div class="cap">💳 Payments to confirm <span class="pill warn">${rows.length}</span></div><div class="paylist">${rows.map(({o,p})=>`<div class="payrow"><div style="flex:1;min-width:0"><b>${fcur(p.amount,p.currency||ordCur(o))}</b> · ${esc(custName(o.customer))} <span class="note">(${esc(o.no)})</span><div class="note">${esc(p.method||'Advance')} · by ${esc(userName(p.by))} · ${esc(tm(p.createdAt)||fdate(p.date))}</div></div>${p.screenshot?`<a href="${esc(p.screenshot.url)}" target="_blank" rel="noopener" class="thumb"><img src="${esc(p.screenshot.url)}" alt="screenshot"></a>`:'<span class="note">no screenshot yet</span>'}${canOk?`<button class="btn sm good" onclick="setPayConf('${o.id}','${p.pid}','${ME.id}')">Approve</button>`:''}<button class="btn sm" onclick="orderDetail(byId('orders','${o.id}'))">Open</button></div>`).join('')}</div></div>`}
+  return `<div class="card" id="pendpay"><div class="cap">${ic('card')} Payments to confirm <span class="pill warn">${rows.length}</span></div><div class="paylist">${rows.map(({o,p})=>`<div class="payrow"><div style="flex:1;min-width:0"><b>${fcur(p.amount,p.currency||ordCur(o))}</b> · ${esc(custName(o.customer))} <span class="note">(${esc(o.no)})</span><div class="note">${esc(p.method||'Advance')} · by ${esc(userName(p.by))} · ${esc(tm(p.createdAt)||fdate(p.date))}</div></div>${p.screenshot?`<a href="${esc(p.screenshot.url)}" target="_blank" rel="noopener" class="thumb"><img src="${esc(p.screenshot.url)}" alt="screenshot"></a>`:'<span class="note">no screenshot yet</span>'}${canOk?`<button class="btn sm good" onclick="setPayConf('${o.id}','${p.pid}','${ME.id}')">Approve</button>`:''}<button class="btn sm" onclick="orderDetail(byId('orders','${o.id}'))">Open</button></div>`).join('')}</div></div>`}
 function viewAdminDash(){
   const wk=(()=>{const d=new Date();d.setDate(d.getDate()-((d.getDay()+6)%7));return ymd(d)})();
   const from=AD_P==='today'?today():AD_P==='week'?wk:AD_P==='month'?today().slice(0,7)+'-01':AD_P==='year'?today().slice(0,4)+'-01-01':'';
@@ -995,11 +1001,11 @@ function viewAdminDash(){
   const hour=new Date().getHours();const hi=hour<12?'Good morning':hour<17?'Good afternoon':'Good evening';
   // masked values: "₹ ******" with an eye icon beside it
   const STARS='******';
-  const eyeBtn=(flag)=>`<button class="eyei" onclick="${flag}=!${flag};render()" aria-label="${window[flag]?'Hide':'Show'} amount" title="${window[flag]?'Hide':'Show'}">${window[flag]?'🙈':'👁'}</button>`;
+  const eyeBtn=(flag)=>`<button class="eyei" onclick="${flag}=!${flag};render()" aria-label="${window[flag]?'Hide':'Show'} amount" title="${window[flag]?'Hide':'Show'}">${window[flag]?ic('eyeoff'):ic('eye')}</button>`;
   const cm=v=>EYE?money(v):(SET.currency||'₹')+' '+STARS;      // cash
   const sm=v=>SEYE?dmoney(v):(DASH_CUR==='USD'?'$':(SET.currency||'₹'))+' '+STARS;     // sales money (INR/USD toggle)
   const sn=v=>SEYE?v:STARS;                                    // sales counts
-  const big=(v,l,c='')=>`<div class="card sd-big ${c}"><span class="l">${esc(l)}</span><span class="v mv">${v}${eyeBtn('SEYE')}</span></div>`;
+  const big=(v,l,c='',icon='')=>`<div class="card sd-big ${c}">${icon?`<span class="kchip">${ic(icon)}</span>`:''}<span class="l">${esc(l)}</span><span class="v mv">${v}${eyeBtn('SEYE')}</span></div>`;
   const months=[];for(let i=5;i>=0;i--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const m=ymd(d).slice(0,7);months.push({l:d.toLocaleDateString('en-IN',{month:'short'}),v:SEYE?S.orders.filter(o=>!['Cancelled','Draft'].includes(o.status)&&(o.date||'').startsWith(m)).reduce((a,o)=>a+orderSale(o),0):0,f:v=>sm(v)})}
   const team=USERS.filter(u=>u.active!==false).map(u=>({u,...salesStats(u.id,from)})).filter(r=>r.count||r.leads);
   const al=alerts();
@@ -1010,7 +1016,7 @@ function viewAdminDash(){
   <div class="card" style="margin-bottom:16px"><div class="cap">Cash balance</div>
    <div class="cashrow"><div><div class="note">Total</div><div class="kpi gold"><span class="v mv">${cm(cashBal())}${eyeBtn('EYE')}</span></div></div><div><div class="note">Cash</div><div class="kpi"><span class="v mv">${cm(cashBal('Cash'))}${eyeBtn('EYE')}</span></div></div><div><div class="note">Bank</div><div class="kpi"><span class="v mv">${cm(cashBal('Bank'))}${eyeBtn('EYE')}</span></div></div></div></div>
   <div class="sd-head" style="margin-bottom:12px"><div class="cap" style="margin:0">Sales report</div><div style="display:flex;align-items:center;flex-wrap:wrap"><div class="seg">${per.map(([k,l])=>`<button class="${AD_P===k?'on':''}" onclick="AD_P='${k}';render()">${l}</button>`).join('')}</div>${curToggle()}</div></div>
-  <div class="sd-kpis">${big(sm(st.sale),'Total sales','gold')}${big(sm(st.rev),'Money received')}${big(SEYE?`<span style="color:${st.profit<0?'var(--bad)':'var(--good)'}">${money(st.profit)}</span>`:sm(0),'Profit')}${big(sn(st.count),'Orders')}</div>
+  <div class="sd-kpis">${big(sm(st.sale),'Total sales','gold','coin')}${big(sm(st.rev),'Money received','','wallet')}${big(SEYE?`<span style="color:${st.profit<0?'var(--bad)':'var(--good)'}">${money(st.profit)}</span>`:sm(0),'Profit','','reports')}${big(sn(st.count),'Orders','','orders')}</div>
   <div class="grid g2" style="margin-top:16px">
    <div class="card"><h2 style="display:flex;align-items:center;gap:8px">Sales by staff · ${esc(per.find(p=>p[0]===AD_P)[1])} <span style="margin-left:auto">${eyeBtn('SEYE')}</span></h2>${table([{l:'Person',h:r=>esc(r.u.name)+'<div class="note">'+esc(roleLabel(r.u))+'</div>'},{l:'Orders',n:1,h:r=>sn(r.count)},{l:'Sales',n:1,h:r=>sm(r.sale)},{l:'Received',n:1,h:r=>sm(r.rev)},{l:'Profit',n:1,h:r=>SEYE?`<span style="color:${r.profit<0?'var(--bad)':'var(--good)'}">${money(r.profit)}</span>`:sm(0)}],team,{empty:'No sales in this period',onClick:r=>staffReport(r.u)})}<div class="note" style="margin-top:8px">Click a person for their monthly / 3-month / yearly report. Still to collect: <b>${sm(st.due)}</b> · Leads: <b>${sn(st.leads)}</b></div></div>
    <div class="card"><h2 style="display:flex;align-items:center;gap:8px">Sales · last 6 months <span style="margin-left:auto">${eyeBtn('SEYE')}</span></h2>${hbars(months)}</div>
