@@ -456,7 +456,7 @@ const C_STATES={'United States':['Alabama','Alaska','Arizona','Arkansas','Califo
 async function geoFetchStates(country){try{const r=await fetch('https://countriesnow.space/api/v0.1/countries/states',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({country})});const j=await r.json();return((j.data&&j.data.states)||[]).map(s=>s.name)}catch(e){return[]}}
 async function geoFetchCities(country,state){try{const r=await fetch('https://countriesnow.space/api/v0.1/countries/state/cities',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({country,state})});const j=await r.json();return(j.data||[])}catch(e){return[]}}
 function fillDL(inp,items){if(!inp)return;const dl=document.getElementById(inp.getAttribute('list'));if(dl)dl.innerHTML=items.map(s=>'<option value="'+String(s).replace(/"/g,'&quot;')+'"></option>').join('')}
-const PAY_METHODS=['PayPal','Zelle','Bank Transfer','Payment Link','Crypto','Cash','Website Order (Direct)'];
+const PAY_METHODS=['PayPal','Zelle','Bank Transfer','Payment Link','Crypto','Cash','Website Order (Direct)','Other'];
 const COURIERS=['FedEx','UPS','DHL','Blue Dart','DTDC','India Post','Other'];
 const curFlag=code=>{const cc=CUR_CC[code]||'';return cc?`<img class="cflag" src="https://flagcdn.com/24x18/${cc}.png" srcset="https://flagcdn.com/48x36/${cc}.png 2x" width="24" height="18" alt="" loading="lazy">`:'<span class="cflag noflag"></span>'};
 function curBtn(code){return `<button type="button" class="curbtn">${curFlag(code)}<span class="curlbl">${esc(code)}</span><span class="curcar">▾</span></button>`}
@@ -1098,7 +1098,7 @@ function orderForm(o){
     {k:'courierINR',l:'Courier expense (₹)',t:'num'},
     {k:'profitPreview',l:'Profit before marketing (₹)',ro:1,calc:v=>{const p=toINRat(num(v.saleValue),v.currency||'USD',fxRate(v.currency||'USD'))-num(v.makingCostINR)-num(v.courierINR);return money(p)}},
     {k:'sharePreview',l:'Sales share '+COMMISSION_PCT()+'% (₹)',ro:1,calc:v=>{const p=toINRat(num(v.saleValue),v.currency||'USD',fxRate(v.currency||'USD'))-num(v.makingCostINR)-num(v.courierINR);return money(r2(p*COMMISSION_PCT()/100))}},
-    ...(isNew?[{k:'advance',l:'Advance / deposit received now ($)',t:'num',hint:'Optional — add its screenshot below; an admin confirms it'},{k:'payMethod',l:'Payment method (how it came)',t:'sel',o:PAY_METHODS},{k:'paymentShot',l:'Payment screenshot',t:'file',accept:'image/*',max:1,btn:'Upload payment screenshot',w:2}]:[]),
+    ...(isNew?[{k:'advance',l:'Advance / deposit received now ($)',t:'num',hint:'Optional — add its screenshot below; an admin confirms it'},{k:'payMethod',l:'Payment method (how it came)',t:'sel',o:PAY_METHODS},{k:'payMethodOther',l:'If "Other", specify which method'},{k:'paymentShot',l:'Payment screenshot',t:'file',accept:'image/*',max:1,btn:'Upload payment screenshot',w:2}]:[]),
     {k:'salesBy',l:'Sales executive',t:'sel',o:()=>USERS.filter(u=>u.active!==false).map(u=>[u.id,u.name]),d:ME.id},
     {k:'hrX',l:'Shipping address',t:'hr'},
     {k:'addr1',l:'Address line 1',w:2},{k:'addr2',l:'Address line 2 (optional)',w:2},
@@ -1125,7 +1125,8 @@ function orderForm(o){
      const adv=num(v.advance);delete v.advance;
      const prodFiles=Array.isArray(v.productFiles)?v.productFiles:[];delete v.productFiles;
      const payShot=(Array.isArray(v.paymentShot)?v.paymentShot:[])[0]||null;delete v.paymentShot;
-     const payMethod=v.payMethod;delete v.payMethod;
+     const payMethod=v.payMethod;delete v.payMethod;const payMethodOther=v.payMethodOther;delete v.payMethodOther;
+     const payMethodFinal=(payMethod==='Other'?((payMethodOther||'').trim()||'Other'):payMethod)||'Advance / deposit';
      if(prodFiles.length)v.productPhotos=[...(v.productPhotos||[]),...prodFiles];
      if(!v.salesBy)v.salesBy=ME.id;
      v.usdRate=fxRate(v.currency||'USD');
@@ -1133,7 +1134,7 @@ function orderForm(o){
      if(isNew)v.history=[{ts:nowISO(),by:ME.id,to:v.status,note:'Order created'}];
      else if(o.status!==v.status)v.history=[...(o.history||[]),{ts:nowISO(),by:ME.id,from:o.status,to:v.status,note:'Edited'}];
      let s=await save('orders',v);
-     if(isNew&&adv>0){const pid=uid();const pay={pid,amount:adv,currency:v.currency,method:payMethod||'Advance / deposit',date:today(),verified:false,by:ME.id,createdAt:nowISO()};if(payShot)pay.screenshot=payShot;
+     if(isNew&&adv>0){const pid=uid();const pay={pid,amount:adv,currency:v.currency,method:payMethodFinal,date:today(),verified:false,by:ME.id,createdAt:nowISO()};if(payShot)pay.screenshot=payShot;
        s=await save('orders',{...s,payments:[pay]},{silent:1,action:'advance payment'});toast('Advance '+fcur(adv,v.currency)+(payShot?' recorded with screenshot ✓':' recorded — admin will confirm it'));}
      setTimeout(()=>orderDetail(byId('orders',s.id)||s),60)}})}
 /* --- order stage pipeline (sales can advance) --- */
