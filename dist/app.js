@@ -1172,7 +1172,7 @@ function viewAdminDash(){
   const months=[];for(let i=5;i>=0;i--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const m=ymd(d).slice(0,7);months.push({l:d.toLocaleDateString('en-IN',{month:'short'}),v:SEYE?S.orders.filter(o=>!['Cancelled','Draft'].includes(o.status)&&(o.date||'').startsWith(m)).reduce((a,o)=>a+orderSale(o),0):0,f:v=>sm(v)})}
   const team=USERS.filter(u=>u.active!==false).map(u=>({u,...salesStats(u.id,from)})).filter(r=>r.count||r.leads);
   const al=alerts();
-  const qa=[['+ New order','orderForm()','Confirmed sale'],['+ New lead','leadForm()','Customer enquiry'],['+ Price quote','jewelQuoteForm()','Auto-price quotation'],['+ Money in',"cashForm('Income')",'Payment received'],['− Money out',"cashForm('Expense')",'Expense paid']];
+  const qa=[['+ New order','orderForm()','Confirmed sale']];
   return `<div class="sd-head"><div><h1>${hi}, ${esc((ME.name||'').split(' ')[0])}</h1><div class="note">${esc(roleLabel(ME))} · ${esc(SET.company.name)}</div></div></div>
   <div class="sd-qa">${qa.map(([l,fn,sub])=>`<button class="sd-act" onclick="${fn}"><b>${esc(l)}</b><span>${esc(sub)}</span></button>`).join('')}</div>
   <div class="grid g2" style="margin:16px 0">${punchCard()}${attendanceToday()}</div>
