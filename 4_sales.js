@@ -407,14 +407,14 @@ function productPanel(o){const ph=o.productPhotos||[];
 function addProductPhotos(oid){const o=orderOf(oid);if(!o)return;const rem=MAX_PHOTOS-(o.productPhotos||[]).length;if(rem<=0){toast('Photo limit ('+MAX_PHOTOS+') reached.',true);return}pickFiles(async files=>{await save('orders',{...o,productPhotos:[...(o.productPhotos||[]),...files]},{action:'product photos',silent:1});toast('Product photos added');const open=$('.ov');if(open){open.remove();orderDetail(byId('orders',oid))}},'image/*',rem)}
 
 function procurePanel(o){
-  const ps=(S.purchases||[]).filter(r=>r.order===o.id),fj=(S.factory||[]).filter(r=>r.order===o.id);
-  if(!ps.length&&!fj.length&&!can('buying','view')&&!can('factory','view'))return '';
+  const ps=(S.purchases||[]).filter(r=>r.order===o.id);
+  if(!ps.length&&!o.factSent&&!can('buying','view'))return '';
   const buyINR=ps.filter(r=>r.status!=='Cancelled').reduce((s,r)=>s+(r.currency==='USD'?toINR(buyAmt(r),'USD'):buyAmt(r)),0);
   const pt=ps.length?table([{l:'Ref',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Vendor',h:r=>esc(nameOf('vendors',r.vendor))},{l:'What',h:r=>esc(r.buyKind||'')},{l:'Amount',n:1,h:r=>fcur(buyAmt(r),r.currency||'INR')},{l:'Status',h:r=>stPill(r.status||'Ordered')}],ps,{onClick:buyForm}):'<div class="note">No purchases linked yet.</div>';
-  const ft=fj.length?table([{l:'Ref',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Factory',h:r=>esc(nameOf('vendors',r.factory))},{l:'Stage',h:r=>stPill(r.stage||'Assessment')},{l:'Spec',h:r=>facSpecShort(r)},{l:'Status',h:r=>stPill(r.status||'Sent')}],fj,{onClick:facForm}):'<div class="note">No factory jobs yet.</div>';
+  const fac=o.factSent?`<dl class="dl"><dt>Factory</dt><dd>${esc(nameOf('vendors',o.factFactory)||'—')}</dd><dt>Sent</dt><dd>${fdate(o.factSent)}</dd>${o.factBack?`<dt>Received back</dt><dd>${fdate(o.factBack)}</dd>`:'<dt>Status</dt><dd><span class="pill warn">At factory</span></dd>'}${o.factNote?`<dt>Note</dt><dd>${esc(o.factNote)}</dd>`:''}</dl>`:'<div class="note">Material not sent to factory yet.</div>';
   return `<div><h3>Procurement &amp; factory</h3>
    <div class="note" style="margin:2px 0 4px">Buying</div>${pt}
-   <div class="note" style="margin:8px 0 4px">Factory</div>${ft}
+   <div class="note" style="margin:8px 0 4px">Material → factory</div>${fac}
    ${buyINR?`<dl class="dl"><dt>Total buying cost</dt><dd class="num" style="text-align:left">${fcur(r2(buyINR/usdRate()),'USD')} <span class="note">${money(buyINR)}</span></dd></dl>`:''}</div>`}
 function orderDetail(o){
   o=byId('orders',o.id)||o;
@@ -433,12 +433,12 @@ function orderDetail(o){
     <div><h3>Dispatches</h3>${dsp.length?table([{l:'No.',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Date',h:r=>fdate(r.date)},{l:'Courier',h:r=>esc((r.courier||'')+' '+(r.tracking||''))},{l:'Status',h:r=>stPill(r.status)}],dsp,{onClick:dispatchForm}):'<div class="note">Nothing dispatched yet.</div>'}</div>
    </div>
    <div><h3>History</h3><ul class="timeline">${(o.history||[]).slice().reverse().map(h=>`<li>${h.from?esc(h.from)+' → ':''}<b>${esc(h.to||'')}</b> ${esc(h.note||'')}<small>${fdt(h.ts)} · ${esc(userName(h.by))}</small></li>`).join('')||'<li>Created</li>'}</ul></div>`,
-   foot:[btn(ic('print')+' Order print','data-print'),can('orders','edit')?btn('+ Payment','data-pay'):'',can('buying','edit')?btn('+ Buy','data-buy'):'',can('factory','edit')?btn('+ Factory job','data-fac'):'',can('orders','edit')?btn('Edit','data-e'):'',can('orders','edit')?btn('Change status','data-st'):'',can('dispatch','edit')?btn('Pack & dispatch','data-dsp'):'',can('orders','approve')&&o.status!=='Closed'?btn('Close order','data-close-o','pri'):''].join(''),
+   foot:[btn(ic('print')+' Order print','data-print'),can('orders','edit')?btn('+ Payment','data-pay'):'',can('buying','edit')?btn('+ Buy','data-buy'):'',can('orders','edit')?btn('Material → factory','data-fac'):'',can('orders','edit')?btn('Edit','data-e'):'',can('orders','edit')?btn('Change status','data-st'):'',can('dispatch','edit')?btn('Pack & dispatch','data-dsp'):'',can('orders','approve')&&o.status!=='Closed'?btn('Close order','data-close-o','pri'):''].join(''),
    onMount(ov,close){const b=s=>ov.querySelector(s);
     b('[data-print]').onclick=()=>printOrder(o);
     b('[data-pay]')&&(b('[data-pay]').onclick=()=>{close();addPaymentForm(o)});
     b('[data-buy]')&&(b('[data-buy]').onclick=()=>{close();buyForm({order:o.id,date:today(),status:'Ordered',currency:'INR',unit:'pcs'})});
-    b('[data-fac]')&&(b('[data-fac]').onclick=()=>{close();facForm({order:o.id,sent:today(),stage:'Assessment',status:'Sent'})});
+    b('[data-fac]')&&(b('[data-fac]').onclick=()=>{close();factoryStepForm(o)});
     ov.querySelectorAll('[data-mkjob]').forEach(x=>x.onclick=()=>{close();const i=+x.dataset.mkjob;const l=o.lines[i];jobForm({order:o.id,line:i,design:l.design,product:l.desc||l.category,qty:l.qty||1,purity:l.purity,routeName:l.route||Object.keys(SET.routes)[0],mode:'In-house',status:'Waiting Material',priority:o.priority,plannedEnd:l.due||o.dueDate})});
     b('[data-e]')&&(b('[data-e]').onclick=()=>{close();orderForm(o)});
     b('[data-st]')&&(b('[data-st]').onclick=()=>{close();openForm({title:`Change status · ${o.no}`,fields:[{k:'to',l:'New status',t:'sel',o:ORDER_ST,req:1,d:o.status},{k:'note',l:'Note / reason',t:'ta',w:4,req:1}],value:{},onSave:v=>{if(v.to==='Cancelled'&&!can('orders','approve')){toast('Only managers can cancel orders.',true);return false}return save('orders',{...o,status:v.to,history:[...(o.history||[]),{ts:nowISO(),by:ME.id,from:o.status,to:v.to,note:v.note}]},{action:'status',reason:v.note})}})});

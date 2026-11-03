@@ -179,7 +179,7 @@ function defaultSettings(){return{
 /* ---------- roles & permissions ---------- */
 const MODS=[
   ['dashboard','Dashboard','Overview','dashboard'],['chat','Chat','Overview','chat'],['crm','CRM & Leads','Sales','crm'],['quotes','Quotations','Sales','quotes'],['orders','Orders','Sales','orders'],
-  ['vendors','Vendors','Make','building'],['buying','Buying','Make','purchase'],['factory','Factory','Make','production'],
+  ['vendors','Vendors','Make','building'],['buying','Buying','Make','purchase'],
   ['designs','Designs','Make','designs'],['purchase','Purchase','Make','purchase'],['inventory','Inventory','Make','inventory'],['production','Production','Make','production'],['karigars','Karigars','Make','karigars'],['wastage','Wastage & Recovery','Make','wastage'],['qc','Quality Control','Make','qc'],['dispatch','Packing & Dispatch','Make','dispatch'],
   ['accounts','Accounts','Money','accounts'],['hr','HR & Payroll','Money','hr'],['reports','Reports','Money','reports'],
   ['masters','Masters','Admin','masters'],['setup','Staff & Users','Admin','setup'],['audit','Audit Log','Admin','audit'],['prefs','Settings','Account','prefs']];
@@ -227,7 +227,7 @@ let LANG='en';try{LANG=localStorage.getItem('erp_lang')||'en'}catch(e){}
 const T=s=>(I18N[LANG]&&I18N[LANG][s])||s;
 
 /* ---------- data layer: Cloudflare Worker API (D1 + R2) ---------- */
-const COLLS=['tasks','punch','messages','cash','leads','quotes','orders','designs','pos','vouchers','pieces','jobs','karigars','challans','wastage','qc','dispatches','invoices','receipts','bills','payments','expenses','customers','suppliers','employees','attendance','vendors','purchases','factory'];
+const COLLS=['tasks','punch','messages','cash','leads','quotes','orders','designs','pos','vouchers','pieces','jobs','karigars','challans','wastage','qc','dispatches','invoices','receipts','bills','payments','expenses','customers','suppliers','employees','attendance','vendors','purchases'];
 const S={};COLLS.forEach(c=>S[c]=[]);
 let SET=defaultSettings();
 let USERS=[];let SINCE=0;let LOADED=false;const DEMO=false;
@@ -457,7 +457,7 @@ function inputHTML(f,v,attr){
   if(t==='ccode'){const code=v||f.d||'+1';const sel=PHONE_CODES.find(p=>p[0]===code)||['+1','us','United States'];return `<div class="curpick ccpick" data-curpick><input type="hidden" ${a} value="${esc(code)}">${ccBtn(sel)}<div class="curmenu"><input class="ccsearch" placeholder="Search country or code…" autocomplete="off">${PHONE_CODES.map(([d,iso,name])=>`<div class="curopt ${d===code&&iso===sel[1]?'on':''}" data-code="${esc(d)}" data-flag="${esc(iso)}" data-lbl="${esc(d)}">${flagImg(iso)}<span>${esc(d)}&nbsp;&nbsp;${esc(name)}</span></div>`).join('')}</div></div>`}
   if(t==='pay'){const code=v||'';const list=[...new Set([...PAY_METHODS,...((SET.paymentMethods||[]).filter(m=>m&&m!=='Other'))])];const ib=m=>ic(PAY_ICON[m]||'card');
     return `<div class="curpick paypick" data-curpick><input type="hidden" ${a} value="${esc(code)}"><button type="button" class="curbtn">${code?ib(code)+'<span class="curlbl">'+esc(code)+'</span>':'<span class="curlbl" style="color:var(--muted)">Select…</span>'}<span class="curcar">▾</span></button><div class="curmenu">${list.map(m=>`<div class="curopt ${m===code?'on':''}" data-code="${esc(m)}" data-ic="${esc(PAY_ICON[m]||'card')}">${ib(m)}<span>${esc(m)}</span></div>`).join('')}<div class="curopt payadd" data-code="__addpay__" data-ic="card">${ic('reports')}<span>+ Add new method…</span></div></div></div>`}
-  if(t==='sel'||t==='ref'){const ops=optList(f.o);return `<select ${a}><option value="">Select…</option>${ops.map(([k,l])=>`<option value="${esc(k)}" ${String(k)===String(v??'')?'selected':''}>${esc(l)}</option>`).join('')}${v&&!ops.some(([k])=>String(k)===String(v))?`<option value="${esc(v)}" selected>${esc(v)}</option>`:''}</select>`}
+  if(t==='sel'||t==='ref'){const ops=optList(f.o);const addn=f.add?` data-addnew="${esc(f.add)}"`:'';return `<select ${a}${addn}><option value="">Select…</option>${ops.map(([k,l])=>`<option value="${esc(k)}" ${String(k)===String(v??'')?'selected':''}>${esc(l)}</option>`).join('')}${v&&!ops.some(([k])=>String(k)===String(v))?`<option value="${esc(v)}" selected>${esc(v)}</option>`:''}${f.add?`<option value="__addnew__">➕ ${esc('Add new '+f.add)}…</option>`:''}</select>`}
   if(t==='file'){const files=Array.isArray(v)?v:[];const one=f.max===1;return `<div class="fileup" data-fileup><input type="hidden" ${a} value="${esc(JSON.stringify(files))}"><div class="fileup-prev">${fileupPrev(files)}</div><button type="button" class="fileup-add" data-accept="${esc(f.accept||'image/*')}" data-max="${f.max||10}" title="${esc(f.btn||'Upload')}"><span class="fup-ic">＋</span><span>${esc(one?(files.length?'Replace':'Screenshot'):(f.btn||'Add photo'))}</span></button>${f.voice?`<button type="button" class="fileup-rec" title="Record a voice note">${ic('mic')}<span>Record</span></button>`:''}</div>`}
   if(t==='bool')return `<label style="display:flex;gap:6px;align-items:center;padding-top:6px"><input type="checkbox" ${a} ${v?'checked':''} style="width:auto"> ${esc(f.cl||'Yes')}</label>`;
   if(t==='chk'){const ops=optList(f.o);const vs=v||[];return `<div class="chk" ${a}>${ops.map(([k,l])=>`<label><input type="checkbox" value="${esc(k)}" ${vs.includes(k)?'checked':''}> ${esc(l)}</label>`).join('')}</div>`}
@@ -487,8 +487,8 @@ function modal({title,sub,body,foot,wide,pro,onMount}){
   ov.innerHTML=`<div class="modal ${wide?'wide':''} ${pro?'fpro':''}" role="dialog" aria-modal="true"><div class="mh"><div><h2>${esc(title)}</h2>${sub?`<div class="note">${sub}</div>`:''}</div><button class="btn sm x" data-close aria-label="Close">✕</button></div><div class="mb">${body}</div>${foot?`<div class="mf">${foot}</div>`:''}</div>`;
   root.appendChild(ov);
   const close=()=>ov.remove();
-  ov.addEventListener('click',e=>{if(e.target===ov||e.target.closest('[data-close]'))close()});
-  ov.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+  // only the ✕ / Cancel buttons close the modal — an accidental click outside (or Escape) must NOT close it
+  ov.addEventListener('click',e=>{if(e.target.closest('[data-close]'))close()});
   onMount&&onMount(ov,close);
   const first=ov.querySelector('input:not([readonly]),select,textarea');first&&first.focus();
   return{ov,close}}
@@ -598,6 +598,27 @@ document.addEventListener('click',e=>{
 document.addEventListener('input',e=>{if(e.target.classList&&e.target.classList.contains('ccsearch')){const q=e.target.value.trim().toLowerCase();e.target.closest('.curmenu').querySelectorAll('.curopt').forEach(o=>{o.style.display=o.textContent.toLowerCase().includes(q)?'':'none'})}});
 /* order line: category drives the Size suggestions (ring sizes / chain lengths / carats) */
 document.addEventListener('change',e=>{const sel=e.target;if(!sel.matches||!sel.matches('[data-c="category"]'))return;const tr=sel.closest('tr');if(!tr)return;const sz=tr.querySelector('[data-c="size"]');if(!sz||!sz.list||typeof sizeOptsFor!=='function')return;const opts=sizeOptsFor(sel.value);sz.list.innerHTML=opts.map(o=>`<option value="${esc(o)}"></option>`).join('');sz.placeholder=opts.length?(/"/.test(opts[0])?'Length':/ct/.test(opts[0])?'Carat':'Ring size'):''});
+/* generic "➕ Add new…" option on any sel field marked with f.add */
+document.addEventListener('focusin',e=>{const s=e.target;if(s.matches&&s.matches('select[data-addnew]'))s.dataset.prev=s.value});
+document.addEventListener('change',e=>{const s=e.target;if(!s.matches||!s.matches('select[data-addnew]')||s.value!=='__addnew__')return;
+  const label=s.getAttribute('data-addnew')||'value';const nv=(window.prompt('Add new '+label+':','')||'').trim();
+  if(!nv){s.value=s.dataset.prev||'';return}
+  let opt=[...s.options].find(o=>o.value.toLowerCase()===nv.toLowerCase()&&o.value!=='__addnew__');
+  if(!opt){opt=document.createElement('option');opt.value=nv;opt.textContent=nv;s.insertBefore(opt,[...s.options].find(o=>o.value==='__addnew__'))}
+  s.value=opt.value;s.dataset.prev=opt.value;s.dispatchEvent(new Event('change',{bubbles:true}))});
+/* Safe auto-casing: names → ALL CAPS, other plain text → first letter capital.
+   Technical fields (email, phone, code/SKU, rate, amount, size, spec, notes/textareas, numbers/dates) are left untouched. */
+const CASE_SKIP=/email|mail|phone|mobile|whats|tel|sku|code|ref|track|url|web|site|link|gst|pan|vat|iban|ifsc|swift|account|bank|rate|amount|price|cost|qty|quantity|weight|wt|carat|size|purity|spec|note|desc|instruction|address|addr|passw|otp|pin|upi|hsn|serial|imei|number/i;
+const CASE_NAME=/name|person/i;
+const capFirst=s=>s.replace(/^(\s*)([a-zà-ÿ])/,(m,sp,c)=>sp+c.toUpperCase());
+document.addEventListener('focusout',e=>{const el=e.target;if(!el||el.tagName!=='INPUT')return;
+  const ty=(el.getAttribute('type')||'text').toLowerCase();if(!['text',''].includes(ty))return;
+  if(el.closest('.curmenu')||el.classList.contains('ccsearch')||el.hasAttribute('data-fq')||el.hasAttribute('data-noauto'))return;
+  const key=(el.getAttribute('data-k')||el.getAttribute('data-c')||'')+' '+(el.getAttribute('placeholder')||'');
+  if(CASE_SKIP.test(key))return;
+  const val=el.value;if(!val||!val.trim())return;
+  const out=CASE_NAME.test(key)?val.toUpperCase():capFirst(val);
+  if(out!==val){el.value=out;el.dispatchEvent(new Event('input',{bubbles:true}))}});
 document.addEventListener('click',e=>{const add=e.target.closest('.fileup-add');if(!add)return;e.preventDefault();const wrap=add.closest('[data-fileup]');const hid=wrap.querySelector('input[type=hidden]');const prev=wrap.querySelector('.fileup-prev');const max=+add.dataset.max||10;let cur=[];try{cur=JSON.parse(hid.value||'[]')}catch(x){}
   // single-file field (e.g. payment screenshot): a new pick replaces the old one
   if(max===1&&cur.length){cur=[]}
@@ -1048,14 +1069,14 @@ function productPanel(o){const ph=o.productPhotos||[];
 function addProductPhotos(oid){const o=orderOf(oid);if(!o)return;const rem=MAX_PHOTOS-(o.productPhotos||[]).length;if(rem<=0){toast('Photo limit ('+MAX_PHOTOS+') reached.',true);return}pickFiles(async files=>{await save('orders',{...o,productPhotos:[...(o.productPhotos||[]),...files]},{action:'product photos',silent:1});toast('Product photos added');const open=$('.ov');if(open){open.remove();orderDetail(byId('orders',oid))}},'image/*',rem)}
 
 function procurePanel(o){
-  const ps=(S.purchases||[]).filter(r=>r.order===o.id),fj=(S.factory||[]).filter(r=>r.order===o.id);
-  if(!ps.length&&!fj.length&&!can('buying','view')&&!can('factory','view'))return '';
+  const ps=(S.purchases||[]).filter(r=>r.order===o.id);
+  if(!ps.length&&!o.factSent&&!can('buying','view'))return '';
   const buyINR=ps.filter(r=>r.status!=='Cancelled').reduce((s,r)=>s+(r.currency==='USD'?toINR(buyAmt(r),'USD'):buyAmt(r)),0);
   const pt=ps.length?table([{l:'Ref',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Vendor',h:r=>esc(nameOf('vendors',r.vendor))},{l:'What',h:r=>esc(r.buyKind||'')},{l:'Amount',n:1,h:r=>fcur(buyAmt(r),r.currency||'INR')},{l:'Status',h:r=>stPill(r.status||'Ordered')}],ps,{onClick:buyForm}):'<div class="note">No purchases linked yet.</div>';
-  const ft=fj.length?table([{l:'Ref',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Factory',h:r=>esc(nameOf('vendors',r.factory))},{l:'Stage',h:r=>stPill(r.stage||'Assessment')},{l:'Spec',h:r=>facSpecShort(r)},{l:'Status',h:r=>stPill(r.status||'Sent')}],fj,{onClick:facForm}):'<div class="note">No factory jobs yet.</div>';
+  const fac=o.factSent?`<dl class="dl"><dt>Factory</dt><dd>${esc(nameOf('vendors',o.factFactory)||'—')}</dd><dt>Sent</dt><dd>${fdate(o.factSent)}</dd>${o.factBack?`<dt>Received back</dt><dd>${fdate(o.factBack)}</dd>`:'<dt>Status</dt><dd><span class="pill warn">At factory</span></dd>'}${o.factNote?`<dt>Note</dt><dd>${esc(o.factNote)}</dd>`:''}</dl>`:'<div class="note">Material not sent to factory yet.</div>';
   return `<div><h3>Procurement &amp; factory</h3>
    <div class="note" style="margin:2px 0 4px">Buying</div>${pt}
-   <div class="note" style="margin:8px 0 4px">Factory</div>${ft}
+   <div class="note" style="margin:8px 0 4px">Material → factory</div>${fac}
    ${buyINR?`<dl class="dl"><dt>Total buying cost</dt><dd class="num" style="text-align:left">${fcur(r2(buyINR/usdRate()),'USD')} <span class="note">${money(buyINR)}</span></dd></dl>`:''}</div>`}
 function orderDetail(o){
   o=byId('orders',o.id)||o;
@@ -1074,12 +1095,12 @@ function orderDetail(o){
     <div><h3>Dispatches</h3>${dsp.length?table([{l:'No.',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Date',h:r=>fdate(r.date)},{l:'Courier',h:r=>esc((r.courier||'')+' '+(r.tracking||''))},{l:'Status',h:r=>stPill(r.status)}],dsp,{onClick:dispatchForm}):'<div class="note">Nothing dispatched yet.</div>'}</div>
    </div>
    <div><h3>History</h3><ul class="timeline">${(o.history||[]).slice().reverse().map(h=>`<li>${h.from?esc(h.from)+' → ':''}<b>${esc(h.to||'')}</b> ${esc(h.note||'')}<small>${fdt(h.ts)} · ${esc(userName(h.by))}</small></li>`).join('')||'<li>Created</li>'}</ul></div>`,
-   foot:[btn(ic('print')+' Order print','data-print'),can('orders','edit')?btn('+ Payment','data-pay'):'',can('buying','edit')?btn('+ Buy','data-buy'):'',can('factory','edit')?btn('+ Factory job','data-fac'):'',can('orders','edit')?btn('Edit','data-e'):'',can('orders','edit')?btn('Change status','data-st'):'',can('dispatch','edit')?btn('Pack & dispatch','data-dsp'):'',can('orders','approve')&&o.status!=='Closed'?btn('Close order','data-close-o','pri'):''].join(''),
+   foot:[btn(ic('print')+' Order print','data-print'),can('orders','edit')?btn('+ Payment','data-pay'):'',can('buying','edit')?btn('+ Buy','data-buy'):'',can('orders','edit')?btn('Material → factory','data-fac'):'',can('orders','edit')?btn('Edit','data-e'):'',can('orders','edit')?btn('Change status','data-st'):'',can('dispatch','edit')?btn('Pack & dispatch','data-dsp'):'',can('orders','approve')&&o.status!=='Closed'?btn('Close order','data-close-o','pri'):''].join(''),
    onMount(ov,close){const b=s=>ov.querySelector(s);
     b('[data-print]').onclick=()=>printOrder(o);
     b('[data-pay]')&&(b('[data-pay]').onclick=()=>{close();addPaymentForm(o)});
     b('[data-buy]')&&(b('[data-buy]').onclick=()=>{close();buyForm({order:o.id,date:today(),status:'Ordered',currency:'INR',unit:'pcs'})});
-    b('[data-fac]')&&(b('[data-fac]').onclick=()=>{close();facForm({order:o.id,sent:today(),stage:'Assessment',status:'Sent'})});
+    b('[data-fac]')&&(b('[data-fac]').onclick=()=>{close();factoryStepForm(o)});
     ov.querySelectorAll('[data-mkjob]').forEach(x=>x.onclick=()=>{close();const i=+x.dataset.mkjob;const l=o.lines[i];jobForm({order:o.id,line:i,design:l.design,product:l.desc||l.category,qty:l.qty||1,purity:l.purity,routeName:l.route||Object.keys(SET.routes)[0],mode:'In-house',status:'Waiting Material',priority:o.priority,plannedEnd:l.due||o.dueDate})});
     b('[data-e]')&&(b('[data-e]').onclick=()=>{close();orderForm(o)});
     b('[data-st]')&&(b('[data-st]').onclick=()=>{close();openForm({title:`Change status · ${o.no}`,fields:[{k:'to',l:'New status',t:'sel',o:ORDER_ST,req:1,d:o.status},{k:'note',l:'Note / reason',t:'ta',w:4,req:1}],value:{},onSave:v=>{if(v.to==='Cancelled'&&!can('orders','approve')){toast('Only managers can cancel orders.',true);return false}return save('orders',{...o,status:v.to,history:[...(o.history||[]),{ts:nowISO(),by:ME.id,from:o.status,to:v.to,note:v.note}]},{action:'status',reason:v.note})}})});
@@ -1385,19 +1406,16 @@ function grnForm(p){
       await save('pos',{...p,lines,status:full?'Received':'Partially Received',grn:[...(p.grn||[]),{date:today(),by:ME.id,vouchers:made,note:ov.querySelector('#gNote').value+(flags.length?' · PURITY MISMATCH: '+flags.join('; '):'')}]},{action:'grn'});
       if(flags.length)toast('Purity mismatch flagged: '+flags.join('; '),true);close()}finally{e.target.disabled=false}}}})}
 
-/* ============ VENDORS · BUYING · FACTORY ============ */
+/* ============ VENDORS · BUYING (+ material→factory step on the order) ============ */
 /* Website order → Buying dept buys the watch + lab-grown diamond from vendors →
-   item goes to Factory (assessment returns the diamond spec) → buy that diamond →
-   Factory produces the final product → ready for Packing & Dispatch. */
+   material is sent to the factory (a simple step on the order) → final product →
+   ready for Packing & Dispatch. */
 const VENDOR_KINDS=['Diamond','Metal','Watch & parts','Castings / findings','Factory','Other'];
 const VENDOR_TERMS=['Advance','On delivery','7 days','15 days','30 days','Custom'];
 const BUY_KINDS=['Watch / base item','Lab-grown diamond','CVD diamond','Moissanite','Metal','Castings / findings','Components','Other'];
 const BUY_ST=['Ordered','Received','Cancelled'];
 const BUY_UNITS=['pcs','ct','g','set','pair'];
 const BUY_CUR=['INR','USD'];
-const FAC_STAGE=['Assessment','Production'];
-const FAC_ST=['Sent','In progress','Received'];
-const DIA_SHAPES=['Round','Oval','Princess','Emerald','Cushion','Pear','Marquise','Radiant','Asscher','Heart','Baguette','Other'];
 const ordNo=id=>{const o=byId('orders',id);return o?o.no:(id||'')};
 const vendorOpt=kind=>()=>S.vendors.filter(v=>v.active!==false&&(!kind||v.kind===kind)).map(v=>[v.id,(v.no?v.no+' · ':'')+(v.name||'')]);
 const orderOpt=()=>S.orders.filter(o=>!['Delivered','Cancelled','Closed'].includes(o.status)).sort((a,b)=>(b.no||'').localeCompare(a.no||'')).map(o=>[o.id,(o.no||'')+(o.customerName?' · '+o.customerName:'')]);
@@ -1406,14 +1424,14 @@ const buyAmt=r=>num(r.amount)||num(r.qty)*num(r.rate);
 /* ---------- Vendors (reusable supplier master) ---------- */
 function viewVendors(){
   const rows=applyFil('vendors',S.vendors,'kind').sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-  return phead('Vendors','Diamond, metal, watch and factory suppliers — used across Buying and Factory.',can('vendors','edit')?btn('+ New vendor','onclick="vendorForm()"','pri'):'')
+  return phead('Vendors','Diamond, metal, watch and factory suppliers — used across Buying.',can('vendors','edit')?btn('+ New vendor','onclick="vendorForm()"','pri'):'')
    +filterBar('vendors',VENDOR_KINDS)
    +table([{l:'Code',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Vendor',h:r=>esc(r.name)},{l:'Type',h:r=>stPill(r.kind||'Other')},{l:'Contact',h:r=>esc([r.person,r.phone].filter(Boolean).join(' · ')||'—')},{l:'City',h:r=>esc(r.city||'—')},{l:'Terms',h:r=>esc(r.terms||'—')},{l:'Status',h:r=>stPill(r.active===false?'Inactive':'Active')}],
      rows,{onClick:vendorForm,empty:'No vendors yet',emptyHint:'Add the diamond, metal, watch and factory suppliers you buy from.'})}
 function vendorForm(p){
   openForm({title:p&&p.id?`Edit ${p.name||p.no}`:'New vendor',pro:1,value:p||{active:true,kind:'Diamond'},fields:[
    {k:'h1',t:'hr',l:'Vendor',icon:ic('building')},
-   {k:'name',l:'Vendor / company name',req:1,w:2},{k:'kind',l:'Type',t:'sel',o:VENDOR_KINDS,req:1},{k:'active',l:'Active',t:'bool',d:true},
+   {k:'name',l:'Vendor / company name',req:1,w:2},{k:'kind',l:'Type',t:'sel',o:()=>[...new Set([...VENDOR_KINDS,...S.vendors.map(v=>v.kind).filter(Boolean)])],add:'type',req:1},{k:'active',l:'Active',t:'bool',d:true},
    {k:'h2',t:'hr',l:'Contact',icon:ic('phone')},
    {k:'person',l:'Contact person'},{k:'phone',l:'Phone'},{k:'email',l:'Email'},{k:'city',l:'City / location'},
    {k:'h3',t:'hr',l:'Terms & rates',icon:ic('wallet')},
@@ -1445,30 +1463,15 @@ function buyForm(p){
    {k:'notes',l:'Notes',t:'ta',w:4}],
    async onSave(v){if(num(v.rate))v.amount=r2(num(v.qty)*num(v.rate));await save('purchases',v)}})}
 
-/* ---------- Factory (send item → assessment returns diamond spec → production → final) ---------- */
-function viewFactory(){
-  const rows=applyFil('factory',S.factory).sort((a,b)=>(b.no||'').localeCompare(a.no||''));
-  const atFac=rows.filter(r=>r.status!=='Received').length;
-  const kp=(v,l,c='')=>`<div class="card kpi ${c}"><span class="v">${v}</span><span class="l">${esc(l)}</span></div>`;
-  return phead('Factory','Send the item to the factory. Assessment returns the diamond spec; production returns the final product.',can('factory','edit')?btn('+ New factory job','onclick="facForm()"','pri'):'')
-   +`<div class="grid g3" style="margin-bottom:12px">${kp(rows.length,'Factory jobs','gold')}${kp(atFac,'At factory now',atFac?'alert':'')}${kp(rows.filter(r=>r.status==='Received').length,'Completed')}</div>`
-   +filterBar('factory',FAC_ST)
-   +table([{l:'Ref',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Order',h:r=>`<span class="ref">${esc(ordNo(r.order))}</span>`},{l:'Factory',h:r=>esc(nameOf('vendors',r.factory))},{l:'Stage',h:r=>stPill(r.stage||'Assessment')},{l:'Sent',h:r=>fdate(r.sent)},{l:'Diamond spec',h:r=>facSpecShort(r)},{l:'Status',h:r=>stPill(r.status||'Sent')}],
-     rows,{onClick:facForm,empty:'No factory jobs yet',emptyHint:'Create a job when you hand an item to the factory.'})}
-function facSpecShort(r){const s=r.diaSpec||[];if(!s.length)return '—';return esc(s.map(x=>`${fq(x.qty)}×${x.size||'?'}${x.shape?' '+x.shape:''}`).join(', ')).slice(0,60)}
-function facForm(p){
-  openForm({title:p&&p.id?`Edit ${p.no}`:'New factory job',pro:1,wide:1,value:p||{sent:today(),stage:'Assessment',status:'Sent'},fields:[
-   {k:'h1',t:'hr',l:'Job',icon:ic('box')},
-   {k:'order',l:'Order',t:'ref',o:orderOpt,req:1,w:2},{k:'factory',l:'Factory',t:'ref',o:vendorOpt('Factory'),req:1,w:2,hint:'Add the factory under Vendors (type = Factory) first'},
-   {k:'stage',l:'Stage',t:'sel',o:FAC_STAGE,req:1},{k:'status',l:'Status',t:'sel',o:FAC_ST,d:'Sent'},
-   {k:'itemsSent',l:'Items sent to factory',w:2,hint:'e.g. Watch body + mount (for assessment) · Watch + 1.5ct diamond (for production)'},
-   {k:'h2',t:'hr',l:'Diamond spec (from assessment)',icon:ic('gem')},
-   {k:'diaSpec',l:'Diamonds the factory needs',t:'lines',cols:[{k:'qty',l:'Qty',t:'num',w:70},{k:'size',l:'Size / carat',w:110},{k:'shape',l:'Shape',t:'sel',o:DIA_SHAPES,w:120},{k:'note',l:'Note',w:160}]},
-   {k:'h3',t:'hr',l:'Dates & final product',icon:ic('clipboard')},
-   {k:'expected',l:'Expected back',t:'date'},{k:'received',l:'Received back',t:'date'},{k:'finalReceived',l:'Final product received',t:'bool'},
-   {k:'files',l:'Photos / documents',t:'file',accept:'image/*,video/*,application/pdf',max:8,btn:'Add files'},
-   {k:'qcNote',l:'QC / notes',t:'ta',w:4}],
-   async onSave(v){await save('factory',v)}})}
+/* ---------- Material → factory: a simple step recorded on the order ---------- */
+function factoryStepForm(o){
+  o=byId('orders',o.id)||o;
+  openForm({title:`Material → factory · ${o.no}`,pro:1,value:{factFactory:o.factFactory,factSent:o.factSent||today(),factBack:o.factBack||'',factNote:o.factNote||''},fields:[
+   {k:'h1',t:'hr',l:'Material sent to factory',icon:ic('box')},
+   {k:'factFactory',l:'Factory',t:'sel',o:vendorOpt('Factory'),w:2,hint:'Pick a vendor of type Factory (add it under Vendors first)'},
+   {k:'factSent',l:'Sent date',t:'date',d:today()},{k:'factBack',l:'Received back',t:'date',hint:'Fill when it comes back'},
+   {k:'factNote',l:'Note — what was sent / instructions',t:'ta',w:4}],
+   async onSave(v){await save('orders',{...o,factFactory:v.factFactory||'',factSent:v.factSent||'',factBack:v.factBack||'',factNote:v.factNote||''})}})}
 
 /* ============ UNIQUE-PIECE INVENTORY (every piece is different) ============ */
 const PIECE_ST=['In stock','Reserved','Sold','With customer (approval)','Returned','Lost / written off'];
@@ -2061,7 +2064,7 @@ function setSizePref(s){PREF.set('size',s);applyPrefs();render()}
 function askPush(){if(!('Notification'in window)){toast('Notifications are not supported here.',true);return}Notification.requestPermission().then(p=>{toast(p==='granted'?'Notifications turned on ✓':'Not allowed');render()})}
 
 /* ============ RENDER & BOOT ============ */
-const VIEWS={dashboard:viewDashboard,chat:viewChat,prefs:viewSettings,crm:viewCRM,quotes:viewQuotes,orders:viewOrders,vendors:viewVendors,buying:viewBuying,factory:viewFactory,designs:viewDesigns,purchase:viewPurchase,inventory:viewInventory,production:viewProduction,karigars:viewKarigars,wastage:viewWastage,qc:viewQC,dispatch:viewDispatch,accounts:viewAccounts,hr:viewHR,reports:viewReports,masters:viewMasters,setup:viewSetup,audit:viewAudit};
+const VIEWS={dashboard:viewDashboard,chat:viewChat,prefs:viewSettings,crm:viewCRM,quotes:viewQuotes,orders:viewOrders,vendors:viewVendors,buying:viewBuying,designs:viewDesigns,purchase:viewPurchase,inventory:viewInventory,production:viewProduction,karigars:viewKarigars,wastage:viewWastage,qc:viewQC,dispatch:viewDispatch,accounts:viewAccounts,hr:viewHR,reports:viewReports,masters:viewMasters,setup:viewSetup,audit:viewAudit};
 function render(){
   if(!TOKEN){renderLogin();return}
   if(!LOADED){return}

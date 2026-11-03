@@ -20,7 +20,7 @@ function inputHTML(f,v,attr){
   if(t==='ccode'){const code=v||f.d||'+1';const sel=PHONE_CODES.find(p=>p[0]===code)||['+1','us','United States'];return `<div class="curpick ccpick" data-curpick><input type="hidden" ${a} value="${esc(code)}">${ccBtn(sel)}<div class="curmenu"><input class="ccsearch" placeholder="Search country or code…" autocomplete="off">${PHONE_CODES.map(([d,iso,name])=>`<div class="curopt ${d===code&&iso===sel[1]?'on':''}" data-code="${esc(d)}" data-flag="${esc(iso)}" data-lbl="${esc(d)}">${flagImg(iso)}<span>${esc(d)}&nbsp;&nbsp;${esc(name)}</span></div>`).join('')}</div></div>`}
   if(t==='pay'){const code=v||'';const list=[...new Set([...PAY_METHODS,...((SET.paymentMethods||[]).filter(m=>m&&m!=='Other'))])];const ib=m=>ic(PAY_ICON[m]||'card');
     return `<div class="curpick paypick" data-curpick><input type="hidden" ${a} value="${esc(code)}"><button type="button" class="curbtn">${code?ib(code)+'<span class="curlbl">'+esc(code)+'</span>':'<span class="curlbl" style="color:var(--muted)">Select…</span>'}<span class="curcar">▾</span></button><div class="curmenu">${list.map(m=>`<div class="curopt ${m===code?'on':''}" data-code="${esc(m)}" data-ic="${esc(PAY_ICON[m]||'card')}">${ib(m)}<span>${esc(m)}</span></div>`).join('')}<div class="curopt payadd" data-code="__addpay__" data-ic="card">${ic('reports')}<span>+ Add new method…</span></div></div></div>`}
-  if(t==='sel'||t==='ref'){const ops=optList(f.o);return `<select ${a}><option value="">Select…</option>${ops.map(([k,l])=>`<option value="${esc(k)}" ${String(k)===String(v??'')?'selected':''}>${esc(l)}</option>`).join('')}${v&&!ops.some(([k])=>String(k)===String(v))?`<option value="${esc(v)}" selected>${esc(v)}</option>`:''}</select>`}
+  if(t==='sel'||t==='ref'){const ops=optList(f.o);const addn=f.add?` data-addnew="${esc(f.add)}"`:'';return `<select ${a}${addn}><option value="">Select…</option>${ops.map(([k,l])=>`<option value="${esc(k)}" ${String(k)===String(v??'')?'selected':''}>${esc(l)}</option>`).join('')}${v&&!ops.some(([k])=>String(k)===String(v))?`<option value="${esc(v)}" selected>${esc(v)}</option>`:''}${f.add?`<option value="__addnew__">➕ ${esc('Add new '+f.add)}…</option>`:''}</select>`}
   if(t==='file'){const files=Array.isArray(v)?v:[];const one=f.max===1;return `<div class="fileup" data-fileup><input type="hidden" ${a} value="${esc(JSON.stringify(files))}"><div class="fileup-prev">${fileupPrev(files)}</div><button type="button" class="fileup-add" data-accept="${esc(f.accept||'image/*')}" data-max="${f.max||10}" title="${esc(f.btn||'Upload')}"><span class="fup-ic">＋</span><span>${esc(one?(files.length?'Replace':'Screenshot'):(f.btn||'Add photo'))}</span></button>${f.voice?`<button type="button" class="fileup-rec" title="Record a voice note">${ic('mic')}<span>Record</span></button>`:''}</div>`}
   if(t==='bool')return `<label style="display:flex;gap:6px;align-items:center;padding-top:6px"><input type="checkbox" ${a} ${v?'checked':''} style="width:auto"> ${esc(f.cl||'Yes')}</label>`;
   if(t==='chk'){const ops=optList(f.o);const vs=v||[];return `<div class="chk" ${a}>${ops.map(([k,l])=>`<label><input type="checkbox" value="${esc(k)}" ${vs.includes(k)?'checked':''}> ${esc(l)}</label>`).join('')}</div>`}
@@ -50,8 +50,8 @@ function modal({title,sub,body,foot,wide,pro,onMount}){
   ov.innerHTML=`<div class="modal ${wide?'wide':''} ${pro?'fpro':''}" role="dialog" aria-modal="true"><div class="mh"><div><h2>${esc(title)}</h2>${sub?`<div class="note">${sub}</div>`:''}</div><button class="btn sm x" data-close aria-label="Close">✕</button></div><div class="mb">${body}</div>${foot?`<div class="mf">${foot}</div>`:''}</div>`;
   root.appendChild(ov);
   const close=()=>ov.remove();
-  ov.addEventListener('click',e=>{if(e.target===ov||e.target.closest('[data-close]'))close()});
-  ov.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+  // only the ✕ / Cancel buttons close the modal — an accidental click outside (or Escape) must NOT close it
+  ov.addEventListener('click',e=>{if(e.target.closest('[data-close]'))close()});
   onMount&&onMount(ov,close);
   const first=ov.querySelector('input:not([readonly]),select,textarea');first&&first.focus();
   return{ov,close}}
@@ -161,6 +161,27 @@ document.addEventListener('click',e=>{
 document.addEventListener('input',e=>{if(e.target.classList&&e.target.classList.contains('ccsearch')){const q=e.target.value.trim().toLowerCase();e.target.closest('.curmenu').querySelectorAll('.curopt').forEach(o=>{o.style.display=o.textContent.toLowerCase().includes(q)?'':'none'})}});
 /* order line: category drives the Size suggestions (ring sizes / chain lengths / carats) */
 document.addEventListener('change',e=>{const sel=e.target;if(!sel.matches||!sel.matches('[data-c="category"]'))return;const tr=sel.closest('tr');if(!tr)return;const sz=tr.querySelector('[data-c="size"]');if(!sz||!sz.list||typeof sizeOptsFor!=='function')return;const opts=sizeOptsFor(sel.value);sz.list.innerHTML=opts.map(o=>`<option value="${esc(o)}"></option>`).join('');sz.placeholder=opts.length?(/"/.test(opts[0])?'Length':/ct/.test(opts[0])?'Carat':'Ring size'):''});
+/* generic "➕ Add new…" option on any sel field marked with f.add */
+document.addEventListener('focusin',e=>{const s=e.target;if(s.matches&&s.matches('select[data-addnew]'))s.dataset.prev=s.value});
+document.addEventListener('change',e=>{const s=e.target;if(!s.matches||!s.matches('select[data-addnew]')||s.value!=='__addnew__')return;
+  const label=s.getAttribute('data-addnew')||'value';const nv=(window.prompt('Add new '+label+':','')||'').trim();
+  if(!nv){s.value=s.dataset.prev||'';return}
+  let opt=[...s.options].find(o=>o.value.toLowerCase()===nv.toLowerCase()&&o.value!=='__addnew__');
+  if(!opt){opt=document.createElement('option');opt.value=nv;opt.textContent=nv;s.insertBefore(opt,[...s.options].find(o=>o.value==='__addnew__'))}
+  s.value=opt.value;s.dataset.prev=opt.value;s.dispatchEvent(new Event('change',{bubbles:true}))});
+/* Safe auto-casing: names → ALL CAPS, other plain text → first letter capital.
+   Technical fields (email, phone, code/SKU, rate, amount, size, spec, notes/textareas, numbers/dates) are left untouched. */
+const CASE_SKIP=/email|mail|phone|mobile|whats|tel|sku|code|ref|track|url|web|site|link|gst|pan|vat|iban|ifsc|swift|account|bank|rate|amount|price|cost|qty|quantity|weight|wt|carat|size|purity|spec|note|desc|instruction|address|addr|passw|otp|pin|upi|hsn|serial|imei|number/i;
+const CASE_NAME=/name|person/i;
+const capFirst=s=>s.replace(/^(\s*)([a-zà-ÿ])/,(m,sp,c)=>sp+c.toUpperCase());
+document.addEventListener('focusout',e=>{const el=e.target;if(!el||el.tagName!=='INPUT')return;
+  const ty=(el.getAttribute('type')||'text').toLowerCase();if(!['text',''].includes(ty))return;
+  if(el.closest('.curmenu')||el.classList.contains('ccsearch')||el.hasAttribute('data-fq')||el.hasAttribute('data-noauto'))return;
+  const key=(el.getAttribute('data-k')||el.getAttribute('data-c')||'')+' '+(el.getAttribute('placeholder')||'');
+  if(CASE_SKIP.test(key))return;
+  const val=el.value;if(!val||!val.trim())return;
+  const out=CASE_NAME.test(key)?val.toUpperCase():capFirst(val);
+  if(out!==val){el.value=out;el.dispatchEvent(new Event('input',{bubbles:true}))}});
 document.addEventListener('click',e=>{const add=e.target.closest('.fileup-add');if(!add)return;e.preventDefault();const wrap=add.closest('[data-fileup]');const hid=wrap.querySelector('input[type=hidden]');const prev=wrap.querySelector('.fileup-prev');const max=+add.dataset.max||10;let cur=[];try{cur=JSON.parse(hid.value||'[]')}catch(x){}
   // single-file field (e.g. payment screenshot): a new pick replaces the old one
   if(max===1&&cur.length){cur=[]}
