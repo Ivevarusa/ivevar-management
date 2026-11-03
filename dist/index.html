@@ -1597,7 +1597,7 @@ function printOrder(o){const c=byId('customers',o.customer)||{};const company=SE
    .foot{margin-top:30px;border-top:1px solid #e3e6ee;padding-top:12px;text-align:center;color:#999;font-size:10.5px}
    @media print{body{padding:10px 0}.noprint{display:none}}</style></head><body>
    <button class="noprint" onclick="print()" style="float:right;padding:8px 16px;cursor:pointer;border:1px solid #141a3a;background:#141a3a;color:#fff;border-radius:7px">Print / Save PDF</button>
-   <div class="hd"><div><img class="logo" src="${LOGO}" alt="Ivevar Luxury"><div class="co"><b>${esc(company.name||'')}</b><br>${esc(company.address||'')}<br>${esc(company.phone||'')}${company.email?' · '+esc(company.email):''}</div></div>
+   <div class="hd"><div><img class="logo" src="${LOGO}" alt="Ivevar Luxury"><div class="co"><b>${esc(company.name||'')}</b></div></div>
      <div class="doc"><div class="t">Order</div><div class="no">${esc(o.no)}</div><div class="mt">${esc(o.channel||'')}<br>Order date: <b>${esc(fdate(o.date)||o.date||'')}</b>${o.dueDate?`<br>Promised: <b>${esc(fdate(o.dueDate))}</b>`:''}<br><span class="pill">${esc(o.status||'')}</span></div></div></div>
    <div class="two"><div><div class="lbl">Bill to</div><div class="nm">${esc(c.name||'')}</div><div class="ad">${esc(o.email||c.email||'')}${(o.phone||c.phone)?' · '+esc(o.phone||c.phone):''}</div></div>
      <div><div class="lbl">Ship to</div><div class="ad">${esc(o.shipTo||c.address||'')}</div></div></div>
@@ -1607,7 +1607,6 @@ function printOrder(o){const c=byId('customers',o.customer)||{};const company=SE
    <div class="sec">Payments (${esc(cur)})</div><table><thead><tr><th>Date</th><th>Method</th><th class="c">Status</th><th class="r">Amount</th></tr></thead><tbody>${payRows}</tbody></table>
    <div class="tot"><div class="row"><span>Order total</span><b>${fcur(sale,cur)}</b></div><div class="row"><span>Received (verified)</span><b style="color:#1d8a52">${fcur(paid,cur)}</b></div>${pend?`<div class="row"><span>Pending verification</span><b style="color:#c47a0a">${fcur(pend,cur)}</b></div>`:''}<div class="row bal"><span>Balance due</span><span>${fcur(bal,cur)}</span></div></div>
    <div class="sign"><div>Sales person: <b>${esc(o.salesBy?userName(o.salesBy):(o.channel||''))}</b><br><br>Sent to factory: ________________</div><div>QC by: ________________<br><br>Received back: ________________</div></div>
-   <div class="foot">${esc(company.name||'')} · ${esc(company.address||'')} · ${esc(company.phone||'')}${company.email?' · '+esc(company.email):''}</div>
    <script>(function(){function pr(){try{print()}catch(e){}}var imgs=[].slice.call(document.images),n=imgs.length,d=0;if(!n){setTimeout(pr,350);return}function chk(){if(++d>=n)setTimeout(pr,250)}imgs.forEach(function(im){if(im.complete)chk();else{im.onload=chk;im.onerror=chk}});setTimeout(pr,3500)})()</`+`script></body></html>`;
   const w=window.open('','_blank');if(!w){toast('Allow pop-ups for this site to print.',true);return}w.document.open();w.document.write(html);w.document.close()}
 
