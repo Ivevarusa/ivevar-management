@@ -100,7 +100,7 @@ function renderNav(){
   const c=navCounts();let g='';let html='';
   MODS.forEach(([k,l,grp])=>{if(!can(k))return;if(grp!==g){g=grp;html+=`<div class="grp">${esc(T(grp))}</div>`}
     html+=`<a href="#${k}" class="${ROUTE===k?'on':''}">${esc(T(l))}${c[k]?`<span class="ct ${k!=='dashboard'?'hot':''}">${c[k]}</span>`:''}</a>`});
-  $('#nav').innerHTML=html}
+  $('#nav').innerHTML=html;const bl=$('#blogo');if(bl&&bl.getAttribute('src')!==LOGO)bl.src=LOGO}
 function go(mod,arg){ROUTE_ARG=arg||null;if(location.hash!=='#'+mod)location.hash=mod;else render()}
 window.addEventListener('hashchange',()=>{ROUTE=(location.hash||'#dashboard').slice(1)||'dashboard';$('#app').classList.remove('navopen');render();window.scrollTo(0,0)});
 $('#menuBtn').onclick=()=>$('#app').classList.toggle('navopen');

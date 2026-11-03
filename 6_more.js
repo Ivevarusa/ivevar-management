@@ -416,7 +416,7 @@ function render(){
   const y=window.scrollY;$('#view').innerHTML=VIEWS[ROUTE]();window.scrollTo(0,y);if(ROUTE==='chat')setTimeout(scrollChatBottom,30)}
 function renderLogin(setup){
   $('#app').hidden=true;const L=$('#loginRoot');L.hidden=false;
-  L.innerHTML=`<div class="loginwrap"><div class="loginbox"><div class="loginbrand"><div class="logomark">◆</div><div><div class="brandname">IVEVAR</div><div class="brandsub">Office Management</div></div></div>
+  L.innerHTML=`<div class="loginwrap"><div class="loginbox"><div class="loginbrand" style="flex-direction:column;gap:4px"><img class="loginlogo" src="${LOGO}" alt="Ivevar Luxury"><div class="brandsub">Office Management</div></div>
    <div class="note" style="margin:4px 0 16px">${setup?'First-time setup — create the owner (Super Admin) account.':'Sign in with your email and password.'}</div>
    <form id="lf" class="form" style="grid-template-columns:1fr;gap:12px">${setup?'<div class="f"><label>Your name</label><input id="lName" required autocomplete="name" placeholder="e.g. Ankit Koshiya"></div>':''}
    <div class="f"><label>Email (your login ID)</label><input id="lEmail" type="email" required autocomplete="username" placeholder="you@ivevar.com"></div>

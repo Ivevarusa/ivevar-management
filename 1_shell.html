@@ -319,7 +319,11 @@ tbody tr.click:hover td{background:var(--surface2)}
 .curopt:hover{background:var(--surface2)}
 .curopt.on{background:var(--accent-soft)}
 /* ---- settings page ---- */
-.setwrap{display:flex;flex-direction:column;gap:14px;max-width:760px}
+.setwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;max-width:1160px;align-items:start}
+.blogowrap{display:block;background:#fff;border-radius:10px;padding:9px 12px;box-shadow:0 1px 3px #0003}
+.blogo{display:block;width:100%;height:auto}
+.brand .blogowrap+small{display:block;margin-top:9px}
+.loginlogo{display:block;width:100%;max-width:250px;height:auto;margin:2px auto}
 .setcard{padding:0;overflow:hidden}
 .cap2{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:14px 16px 8px}
 .setrow{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 16px;border-top:1px solid var(--line)}
@@ -362,7 +366,7 @@ tbody tr.click:hover td{background:var(--surface2)}
 </style>
 <div class="app" id="app" hidden>
   <aside class="rail" id="rail">
-    <div class="brand"><b>Ivevar Management</b><small>Surat</small></div>
+    <div class="brand"><span class="blogowrap"><img class="blogo" id="blogo" alt="Ivevar Luxury"></span><small>Office Management</small></div>
     <nav class="nav" id="nav"></nav>
   </aside>
   <div class="main">
