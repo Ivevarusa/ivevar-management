@@ -55,6 +55,7 @@ function defaultSettings(){return{
   currency:'₹',
   numbering:{leads:'LEAD',quotes:'QTN',orders:'JWL',designs:'DSN',pos:'PO',vouchers:'STK',pieces:'IVP',jobs:'JOB',challans:'CHL',wastage:'WST',qc:'QC',dispatches:'DSP',invoices:'INV',receipts:'RCP',bills:'BIL',payments:'PAY',expenses:'EXP',cash:'CB',tasks:'TSK',customers:'CUS',suppliers:'SUP',karigars:'KAR',employees:'EMP'},
   usdInr:88,
+  fxRates:{USD:88,AUD:58,GBP:112,EUR:95,CAD:65,AED:24,SGD:66,NZD:54,CHF:100,JPY:0.59,HKD:11,ZAR:4.8,SAR:23.5,INR:1},
   pieceMetals:['14K Yellow Gold','14K White Gold','14K Rose Gold','18K Yellow Gold','18K White Gold','18K Rose Gold','10K Gold','925 Silver','Platinum','Gold Vermeil'],
   pieceStones:['Lab-grown Diamond','Natural Diamond','Moissanite','Gemstone','None'],
   courierAgencies:['Malca-Amit','Brinks','Sequel','BVC Logistics','Ferrari Group','Own / direct'],
@@ -259,7 +260,8 @@ const stageIdx=s=>{const i=ORDER_STAGE.indexOf(s);return i<0?0:i};
 
 /* ---------- currency (website orders are USD; manual orders are ₹) ---------- */
 const usdRate=()=>num(SET.usdInr)||88;
-const ordRate=o=>num(o&&o.usdRate)||usdRate();           // per-order USD→INR rate (locked when the order is taken)
+const fxRate=cur=>{if(!cur||cur==='INR')return 1;const r=SET.fxRates&&num(SET.fxRates[cur]);return r||(cur==='USD'?usdRate():1)};  // admin-set currency→INR rate
+const ordRate=o=>num(o&&o.usdRate)||fxRate(ordCur(o))||usdRate();           // per-order rate (locked when the order is taken)
 const ordCur=o=>o&&o.currency?o.currency:'INR';
 const toINR=(v,cur)=>(cur&&cur!=='INR')?num(v)*usdRate():num(v);
 const toINRat=(v,cur,rate)=>(cur&&cur!=='INR')?num(v)*rate:num(v);

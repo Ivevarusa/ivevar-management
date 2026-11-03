@@ -55,6 +55,7 @@ function defaultSettings(){return{
   currency:'₹',
   numbering:{leads:'LEAD',quotes:'QTN',orders:'JWL',designs:'DSN',pos:'PO',vouchers:'STK',pieces:'IVP',jobs:'JOB',challans:'CHL',wastage:'WST',qc:'QC',dispatches:'DSP',invoices:'INV',receipts:'RCP',bills:'BIL',payments:'PAY',expenses:'EXP',cash:'CB',tasks:'TSK',customers:'CUS',suppliers:'SUP',karigars:'KAR',employees:'EMP'},
   usdInr:88,
+  fxRates:{USD:88,AUD:58,GBP:112,EUR:95,CAD:65,AED:24,SGD:66,NZD:54,CHF:100,JPY:0.59,HKD:11,ZAR:4.8,SAR:23.5,INR:1},
   pieceMetals:['14K Yellow Gold','14K White Gold','14K Rose Gold','18K Yellow Gold','18K White Gold','18K Rose Gold','10K Gold','925 Silver','Platinum','Gold Vermeil'],
   pieceStones:['Lab-grown Diamond','Natural Diamond','Moissanite','Gemstone','None'],
   courierAgencies:['Malca-Amit','Brinks','Sequel','BVC Logistics','Ferrari Group','Own / direct'],
@@ -259,7 +260,8 @@ const stageIdx=s=>{const i=ORDER_STAGE.indexOf(s);return i<0?0:i};
 
 /* ---------- currency (website orders are USD; manual orders are ₹) ---------- */
 const usdRate=()=>num(SET.usdInr)||88;
-const ordRate=o=>num(o&&o.usdRate)||usdRate();           // per-order USD→INR rate (locked when the order is taken)
+const fxRate=cur=>{if(!cur||cur==='INR')return 1;const r=SET.fxRates&&num(SET.fxRates[cur]);return r||(cur==='USD'?usdRate():1)};  // admin-set currency→INR rate
+const ordRate=o=>num(o&&o.usdRate)||fxRate(ordCur(o))||usdRate();           // per-order rate (locked when the order is taken)
 const ordCur=o=>o&&o.currency?o.currency:'INR';
 const toINR=(v,cur)=>(cur&&cur!=='INR')?num(v)*usdRate():num(v);
 const toINRat=(v,cur,rate)=>(cur&&cur!=='INR')?num(v)*rate:num(v);
@@ -666,11 +668,11 @@ function orderForm(o){
     {k:'lines',l:'Items',t:'lines',cols:OL_COLS()},
     {k:'hrP',l:'Pricing & profit',t:'hr'},
     {k:'saleValue',l:'Total order value ($)',t:'num',req:1,hint:'What the customer pays'},
-    {k:'usdRate',l:'USD → INR rate',t:'num',d:88,hint:'Locked for this order'},
+    {k:'usdRate',l:'Exchange rate → INR',ro:1,calc:v=>{const c=v.currency||'USD';return c==='INR'?'1.00 (INR)':fxRate(c).toFixed(2)+' ₹ / '+c},hint:'Admin-set rate — locked for this order'},
     {k:'makingCostINR',l:'Making / product cost (₹)',t:'num',hint:'Your buy/making cost in INR'},
     {k:'courierINR',l:'Courier expense (₹)',t:'num'},
-    {k:'profitPreview',l:'Profit before marketing (₹)',ro:1,calc:v=>{const p=toINRat(num(v.saleValue),v.currency||'USD',num(v.usdRate)||88)-num(v.makingCostINR)-num(v.courierINR);return money(p)}},
-    {k:'sharePreview',l:'Sales share '+COMMISSION_PCT()+'% (₹)',ro:1,calc:v=>{const p=toINRat(num(v.saleValue),v.currency||'USD',num(v.usdRate)||88)-num(v.makingCostINR)-num(v.courierINR);return money(r2(p*COMMISSION_PCT()/100))}},
+    {k:'profitPreview',l:'Profit before marketing (₹)',ro:1,calc:v=>{const p=toINRat(num(v.saleValue),v.currency||'USD',fxRate(v.currency||'USD'))-num(v.makingCostINR)-num(v.courierINR);return money(p)}},
+    {k:'sharePreview',l:'Sales share '+COMMISSION_PCT()+'% (₹)',ro:1,calc:v=>{const p=toINRat(num(v.saleValue),v.currency||'USD',fxRate(v.currency||'USD'))-num(v.makingCostINR)-num(v.courierINR);return money(r2(p*COMMISSION_PCT()/100))}},
     ...(isNew?[{k:'advance',l:'Advance / deposit received now ($)',t:'num',hint:'Optional — upload its screenshot next; an admin verifies it'}]:[]),
     {k:'salesBy',l:'Sales executive',t:'sel',o:()=>USERS.filter(u=>u.active!==false).map(u=>[u.id,u.name]),d:ME.id},
     {k:'hrX',l:'Shipping address',t:'hr'},
@@ -697,6 +699,7 @@ function orderForm(o){
      delete v.custName;delete v.custEmail;delete v.custPhone;delete v.custCC;delete v.custCountry;delete v.orderIdDisplay;delete v.profitPreview;delete v.sharePreview;
      const adv=num(v.advance);delete v.advance;
      if(!v.salesBy)v.salesBy=ME.id;
+     v.usdRate=fxRate(v.currency||'USD');
      v.lines=v.lines.map(l=>({qty:1,status:'Pending',...l}));
      if(isNew)v.history=[{ts:nowISO(),by:ME.id,to:v.status,note:'Order created'}];
      else if(o.status!==v.status)v.history=[...(o.history||[]),{ts:nowISO(),by:ME.id,from:o.status,to:v.status,note:'Edited'}];
@@ -718,17 +721,19 @@ function paymentsPanel(o){const pays=orderPayments(o);const cur=ordCur(o);const 
   return `<div><h3>Payments <span class="note">(${esc(cur)})</span> ${fully?'<span class="pill good">Fully paid</span>':''}</h3>
    <dl class="dl"><dt>Order total</dt><dd>${dual(sale,cur,rate)}</dd><dt>Received (verified)</dt><dd style="color:var(--good)">${dual(paid,cur,rate)}</dd>${pend?`<dt>Pending verification</dt><dd style="color:var(--warn)">${fcur(pend,cur)}</dd>`:''}<dt><b>Balance to collect</b></dt><dd><b style="color:${bal>0.5?'var(--bad)':'var(--good)'}">${dual(bal,cur,rate)}</b></dd></dl>
    ${o.paidOnline?`<div class="note">Website paid online: ${fcur(o.paidOnline,cur)}</div>`:''}
-   ${pays.length?`<div class="paylist">${pays.map(p=>`<div class="payrow"><div><b>${fcur(p.amount,p.currency||cur)}</b>${p.final?' <span class="pill good">Final</span>':''} <span class="note">${esc(p.method||'')} · ${fdate(p.date)}</span>${p.ref?`<div class="note">Ref: ${esc(p.ref)}</div>`:''}</div>${p.screenshot?`<a href="${esc(p.screenshot.url)}" target="_blank" rel="noopener" class="thumb"><img src="${esc(p.screenshot.url)}" alt="screenshot"></a>`:'<span class="note">no screenshot</span>'}<div>${p.verified?`<span class="pill good">Verified</span><div class="note">by ${esc(userName(p.verifiedBy))}</div>`:`<span class="pill warn">Unverified</span>${can('accounts','approve')||can('orders','approve')?`<br><button class="btn sm good" onclick="verifyPayment('${o.id}','${p.pid}')">Verify</button>`:''}`}${can('orders','edit')?`<button class="btn sm dng" onclick="removePayment('${o.id}','${p.pid}')" title="Remove">✕</button>`:''}</div></div>`).join('')}</div>`:'<div class="note">No payments recorded yet.</div>'}</div>`}
+   ${pays.length?`<div class="paylist">${pays.map(p=>`<div class="payrow"><div><b>${fcur(p.amount,p.currency||cur)}</b>${p.final?' <span class="pill good">Final</span>':''} <span class="note">${esc(p.method||'')} · ${fdate(p.date)}</span>${p.ref?`<div class="note">Ref: ${esc(p.ref)}</div>`:''}</div>${p.screenshot?`<a href="${esc(p.screenshot.url)}" target="_blank" rel="noopener" class="thumb"><img src="${esc(p.screenshot.url)}" alt="screenshot"></a>`:'<span class="note">no screenshot</span>'}<div class="payconf">${(can('accounts','approve')||can('orders','approve'))?`<span class="note">Confirmation by</span><select class="setsel" onchange="setPayConf('${o.id}','${p.pid}',this.value)"><option value="">Pending</option>${CONFIRMERS().map(u=>`<option value="${u.id}" ${p.verified&&p.verifiedBy===u.id?'selected':''}>${esc(u.name)}</option>`).join('')}</select>`:`<span class="pill ${p.verified?'good':'warn'}">${p.verified?'Confirmed · '+esc(userName(p.verifiedBy)):'Pending'}</span>`}${can('orders','edit')?`<button class="btn sm dng" onclick="removePayment('${o.id}','${p.pid}')" title="Remove">✕</button>`:''}</div></div>`).join('')}</div>`:'<div class="note">No payments recorded yet.</div>'}</div>`}
 function addPaymentForm(o){const cur=ordCur(o);
-  openForm({title:'Record payment',sub:'Attach the payment screenshot. An accountant/admin verifies it.',fields:[{k:'amount',l:'Amount ('+curSym(cur)+' '+cur+')',t:'num',req:1},{k:'currency',l:'Currency',t:'cur',d:cur},{k:'method',l:'Payment method',t:'sel',o:PAY_METHODS,req:1},{k:'date',l:'Date',t:'date',d:today()},{k:'ref',l:'Reference / txn id'},{k:'final',l:'Final payment?',t:'bool',cl:'Yes — order fully paid'},{k:'note',l:'Note',t:'ta',w:2}],value:{},onChange(cur2,form){const el=form.querySelector('[data-k="amount"]');if(el){const lab=el.closest('.f').querySelector('label');if(lab)lab.innerHTML='Amount ('+curSym(cur2.currency)+' '+esc(cur2.currency||cur)+') <span class="rq">*</span>'}},async onSave(v){
+  openForm({title:'Record payment',sub:'Attach the payment screenshot. An accountant/admin verifies it.',fields:[{k:'amount',l:'Amount ('+curSym(cur)+' '+cur+')',t:'num',req:1},{k:'currency',l:'Currency',t:'cur',d:cur},{k:'method',l:'Payment method',t:'sel',o:PAY_METHODS,req:1},{k:'date',l:'Date',t:'date',d:today()},{k:'confBy',l:'Payment confirmation by',t:'sel',o:()=>[['','Pending — not confirmed yet'],...CONFIRMERS().map(u=>[u.id,u.name])],d:'',hint:'Who confirmed it reached our account'},{k:'ref',l:'Reference / txn id'},{k:'final',l:'Final payment?',t:'bool',cl:'Yes — order fully paid'},{k:'note',l:'Note',t:'ta',w:2}],value:{},onChange(cur2,form){const el=form.querySelector('[data-k="amount"]');if(el){const lab=el.closest('.f').querySelector('label');if(lab)lab.innerHTML='Amount ('+curSym(cur2.currency)+' '+esc(cur2.currency||cur)+') <span class="rq">*</span>'}},async onSave(v){
     let shot=null;
     const pid=uid();
-    const pay={pid,amount:num(v.amount),currency:v.currency||cur,method:v.method,date:v.date,ref:v.ref,note:v.note,final:!!v.final,verified:false,by:ME.id,createdAt:nowISO()};
+    const pay={pid,amount:num(v.amount),currency:v.currency||cur,method:v.method,date:v.date,ref:v.ref,note:v.note,final:!!v.final,verified:!!v.confBy,verifiedBy:v.confBy||null,by:ME.id,createdAt:nowISO()};
     const s=await save('orders',{...o,payments:[...orderPayments(o),pay]},{action:'payment added',silent:1});
     toast('Payment added. Attach screenshot…');
     pickFiles(async files=>{const o2=byId('orders',o.id)||s;const ps=orderPayments(o2).map(p=>p.pid===pid?{...p,screenshot:files[0]}:p);await save('orders',{...o2,payments:ps},{action:'payment screenshot',silent:1});toast('Screenshot attached');const open=$('.ov');if(open){open.remove();orderDetail(byId('orders',o.id))}},'image/*',1);
   }})}
 async function verifyPayment(oid,pid){const o=orderOf(oid);if(!o)return;const ps=orderPayments(o).map(p=>p.pid===pid?{...p,verified:true}:p);try{await save('orders',{...o,payments:ps},{action:'payment verified',silent:1});toast('Payment verified ✓');const open=$('.ov');if(open){open.remove();orderDetail(byId('orders',oid))}}catch(e){}}
+const CONFIRMERS=()=>USERS.filter(u=>u.active!==false&&(u.role==='admin'||(u.title||'')==='CEO'));
+async function setPayConf(oid,pid,val){const o=orderOf(oid);if(!o)return;const ps=orderPayments(o).map(p=>p.pid===pid?{...p,verified:!!val,verifiedBy:val||null}:p);try{await save('orders',{...o,payments:ps},{action:'payment confirmation',silent:1});toast(val?'Payment confirmed ✓':'Set to pending');const open=$('.ov');if(open){open.remove();orderDetail(byId('orders',oid))}}catch(e){}}
 function removePayment(oid,pid){const o=orderOf(oid);if(!o)return;confirmBox('Remove payment','Remove this payment entry?',async()=>{const ps=orderPayments(o).filter(p=>p.pid!==pid);await save('orders',{...o,payments:ps},{action:'payment removed',silent:1});const open=$('.ov');if(open){open.remove();orderDetail(byId('orders',oid))}})}
 /* --- QC photos shared with customer --- */
 function qcPanel(o){const ph=o.qcPhotos||[];
@@ -1608,17 +1613,21 @@ function viewSettings(){
     </div>
    </div>
   </div>`}
-function companyForm(){const c=SET.company||{};openForm({title:'Company profile',wide:1,fields:[
+function companyForm(){const c=SET.company||{};const fx=SET.fxRates||{};const FXC=['USD','AUD','GBP','EUR','CAD','AED','SGD','NZD'];
+  const fxFields=FXC.map(cc=>({k:'fx_'+cc,l:cc+' → ₹',t:'num'}));const fxVals={};FXC.forEach(cc=>fxVals['fx_'+cc]=num(fx[cc])||'');
+  openForm({title:'Company profile',wide:1,fields:[
   {k:'name',l:'Company name (on order slips)',req:1,w:2},
   {k:'address',l:'Address',t:'ta',w:2},
   {k:'phone',l:'Phone / WhatsApp'},
   {k:'email',l:'Email',t:'email'},
   {k:'website',l:'Website'},
-  {k:'usdInr',l:'USD → INR rate',t:'num',d:88},
-  {k:'commissionPct',l:'Sales commission %',t:'num',d:25}
-],value:{name:c.name||'',address:c.address||'',phone:c.phone||'',email:c.email||'',website:SET.website||'https://ivevar.com',usdInr:SET.usdInr||88,commissionPct:SET.commissionPct||25},async onSave(v){
+  {k:'commissionPct',l:'Sales commission %',t:'num',d:25},
+  {k:'fxHr',l:'Currency → INR rates — you fix these; each new order locks the rate for its currency',t:'hr'},
+  ...fxFields
+],value:{name:c.name||'',address:c.address||'',phone:c.phone||'',email:c.email||'',website:SET.website||'https://ivevar.com',commissionPct:SET.commissionPct||25,...fxVals},async onSave(v){
   const company={...SET.company,name:(v.name||'').trim(),address:(v.address||'').trim(),phone:(v.phone||'').trim(),email:(v.email||'').trim()};
-  await saveSettings({company,website:(v.website||'').trim(),usdInr:num(v.usdInr)||88,commissionPct:num(v.commissionPct)||25},'company profile');
+  const fxRates={...(SET.fxRates||{}),INR:1};FXC.forEach(cc=>{if(num(v['fx_'+cc]))fxRates[cc]=num(v['fx_'+cc])});
+  await saveSettings({company,website:(v.website||'').trim(),usdInr:num(v['fx_USD'])||num(SET.usdInr)||88,commissionPct:num(v.commissionPct)||25,fxRates},'company profile');
 }})}
 function setTheme(t){PREF.set('theme',t);applyPrefs();render()}
 function setSizePref(s){PREF.set('size',s);applyPrefs();render()}

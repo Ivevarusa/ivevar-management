@@ -411,17 +411,21 @@ function viewSettings(){
     </div>
    </div>
   </div>`}
-function companyForm(){const c=SET.company||{};openForm({title:'Company profile',wide:1,fields:[
+function companyForm(){const c=SET.company||{};const fx=SET.fxRates||{};const FXC=['USD','AUD','GBP','EUR','CAD','AED','SGD','NZD'];
+  const fxFields=FXC.map(cc=>({k:'fx_'+cc,l:cc+' → ₹',t:'num'}));const fxVals={};FXC.forEach(cc=>fxVals['fx_'+cc]=num(fx[cc])||'');
+  openForm({title:'Company profile',wide:1,fields:[
   {k:'name',l:'Company name (on order slips)',req:1,w:2},
   {k:'address',l:'Address',t:'ta',w:2},
   {k:'phone',l:'Phone / WhatsApp'},
   {k:'email',l:'Email',t:'email'},
   {k:'website',l:'Website'},
-  {k:'usdInr',l:'USD → INR rate',t:'num',d:88},
-  {k:'commissionPct',l:'Sales commission %',t:'num',d:25}
-],value:{name:c.name||'',address:c.address||'',phone:c.phone||'',email:c.email||'',website:SET.website||'https://ivevar.com',usdInr:SET.usdInr||88,commissionPct:SET.commissionPct||25},async onSave(v){
+  {k:'commissionPct',l:'Sales commission %',t:'num',d:25},
+  {k:'fxHr',l:'Currency → INR rates — you fix these; each new order locks the rate for its currency',t:'hr'},
+  ...fxFields
+],value:{name:c.name||'',address:c.address||'',phone:c.phone||'',email:c.email||'',website:SET.website||'https://ivevar.com',commissionPct:SET.commissionPct||25,...fxVals},async onSave(v){
   const company={...SET.company,name:(v.name||'').trim(),address:(v.address||'').trim(),phone:(v.phone||'').trim(),email:(v.email||'').trim()};
-  await saveSettings({company,website:(v.website||'').trim(),usdInr:num(v.usdInr)||88,commissionPct:num(v.commissionPct)||25},'company profile');
+  const fxRates={...(SET.fxRates||{}),INR:1};FXC.forEach(cc=>{if(num(v['fx_'+cc]))fxRates[cc]=num(v['fx_'+cc])});
+  await saveSettings({company,website:(v.website||'').trim(),usdInr:num(v['fx_USD'])||num(SET.usdInr)||88,commissionPct:num(v.commissionPct)||25,fxRates},'company profile');
 }})}
 function setTheme(t){PREF.set('theme',t);applyPrefs();render()}
 function setSizePref(s){PREF.set('size',s);applyPrefs();render()}
