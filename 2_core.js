@@ -199,7 +199,7 @@ const ME={id:null,name:'',email:'',role:null,modules:null,title:'',shift:null,sa
 let TOKEN=null;try{TOKEN=localStorage.getItem('erp_token')}catch(e){}
 const byId=(c,id)=>(S[c]||[]).find(x=>x.id===id);
 const nameOf=(c,id)=>{const x=byId(c,id);return x?(x.name||x.no||x.code||id):''};
-const userName=id=>{if(!id)return '—';const u=USERS.find(x=>x.id===id);return u?u.name:'System'};
+const userName=id=>{if(!id)return '—';if(id==='website')return 'Website order';const u=USERS.find(x=>x.id===id);return u?u.name:'System'};
 let rT=null;function scheduleRender(){clearTimeout(rT);rT=setTimeout(render,40)}
 
 async function api(path,body,opt={}){
