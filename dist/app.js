@@ -340,6 +340,7 @@ function inputHTML(f,v,attr){
   if(t==='cur'){const code=v||f.d||'USD';return `<div class="curpick" data-curpick><input type="hidden" ${a} value="${esc(code)}">${curBtn(code)}<div class="curmenu">${CURRENCIES.map(([c,name])=>`<div class="curopt ${c===code?'on':''}" data-code="${esc(c)}">${curFlag(c)}<span>${esc(name)}</span></div>`).join('')}</div></div>`}
   if(t==='ccode'){const code=v||f.d||'+1';const sel=PHONE_CODES.find(p=>p[0]===code)||['+1','us','United States'];return `<div class="curpick ccpick" data-curpick><input type="hidden" ${a} value="${esc(code)}">${ccBtn(sel)}<div class="curmenu"><input class="ccsearch" placeholder="Search country or code…" autocomplete="off">${PHONE_CODES.map(([d,iso,name])=>`<div class="curopt ${d===code&&iso===sel[1]?'on':''}" data-code="${esc(d)}" data-flag="${esc(iso)}" data-lbl="${esc(d)}">${flagImg(iso)}<span>${esc(d)}&nbsp;&nbsp;${esc(name)}</span></div>`).join('')}</div></div>`}
   if(t==='sel'||t==='ref'){const ops=optList(f.o);const ph=f.req?'Select…':'';return `<select ${a}><option value="">${ph}</option>${ops.map(([k,l])=>`<option value="${esc(k)}" ${String(k)===String(v??'')?'selected':''}>${esc(l)}</option>`).join('')}${v&&!ops.some(([k])=>String(k)===String(v))?`<option value="${esc(v)}" selected>${esc(v)}</option>`:''}</select>`}
+  if(t==='file'){const files=Array.isArray(v)?v:[];return `<div class="fileup" data-fileup><input type="hidden" ${a} value="${esc(JSON.stringify(files))}"><button type="button" class="btn sm fileup-add" data-accept="${esc(f.accept||'image/*')}" data-max="${f.max||10}">📎 ${esc(f.btn||'Upload')}</button><div class="fileup-prev">${files.map(fl=>`<img src="${esc(fl.url)}" alt="">`).join('')}</div></div>`}
   if(t==='bool')return `<label style="display:flex;gap:6px;align-items:center;padding-top:6px"><input type="checkbox" ${a} ${v?'checked':''} style="width:auto"> ${esc(f.cl||'Yes')}</label>`;
   if(t==='chk'){const ops=optList(f.o);const vs=v||[];return `<div class="chk" ${a}>${ops.map(([k,l])=>`<label><input type="checkbox" value="${esc(k)}" ${vs.includes(k)?'checked':''}> ${esc(l)}</label>`).join('')}</div>`}
   const ty=t==='num'?'number" step="any':t==='date'?'date':t==='dt'?'datetime-local':t==='time'?'time':t==='email'?'email':t==='tel'?'tel':'text';
@@ -359,6 +360,7 @@ function readForm(root,fields){
     if(f.t==='chk')v[f.k]=[...el.querySelectorAll('input:checked')].map(i=>i.value);
     else if(f.t==='bool')v[f.k]=el.checked;
     else if(f.t==='num')v[f.k]=el.value===''?'':num(el.value);
+    else if(f.t==='file'){try{v[f.k]=JSON.parse(el.value||'[]')}catch(e){v[f.k]=[]}}
     else v[f.k]=el.value});
   return v}
 
@@ -458,6 +460,7 @@ document.addEventListener('click',e=>{
   if(btn){e.preventDefault();const pick=btn.closest('[data-curpick]');const open=pick.classList.contains('open');document.querySelectorAll('.curpick.open').forEach(p=>p.classList.remove('open'));if(!open)pick.classList.add('open');return}
   document.querySelectorAll('.curpick.open').forEach(p=>{if(!p.contains(e.target))p.classList.remove('open')})});
 document.addEventListener('input',e=>{if(e.target.classList&&e.target.classList.contains('ccsearch')){const q=e.target.value.trim().toLowerCase();e.target.closest('.curmenu').querySelectorAll('.curopt').forEach(o=>{o.style.display=o.textContent.toLowerCase().includes(q)?'':'none'})}});
+document.addEventListener('click',e=>{const add=e.target.closest('.fileup-add');if(!add)return;e.preventDefault();const wrap=add.closest('[data-fileup]');const hid=wrap.querySelector('input[type=hidden]');const prev=wrap.querySelector('.fileup-prev');const max=+add.dataset.max||10;let cur=[];try{cur=JSON.parse(hid.value||'[]')}catch(x){}const rem=max-cur.length;if(rem<=0){toast('Limit reached — remove some first.',true);return}pickFiles(fs=>{const next=[...cur,...fs];hid.value=JSON.stringify(next);prev.innerHTML=next.map(fl=>`<img src="${esc(fl.url)}" alt="">`).join('');hid.dispatchEvent(new Event('change',{bubbles:true}))},add.dataset.accept||'image/*',rem)});
 
 function openRecord(c,id){const x=byId(c,id);if(!x)return;const fn={orders:orderDetail,leads:leadDetail,quotes:quoteForm,customers:x=>masterForm('customers',x),suppliers:x=>masterForm('suppliers',x),karigars:karigarDetail,challans:challanDetail,designs:designDetail,jobs:jobDetail,vouchers:voucherView,invoices:x=>accForm('invoices',x),dispatches:dispatchForm,qc:qcForm,pos:poForm,wastage:wastageForm}[c];fn&&fn(x)}
 
@@ -675,6 +678,7 @@ function orderForm(o){
     {k:'priority',l:'Priority',t:'sel',o:['Normal','High','Urgent']},{k:'status',l:'Status',t:'sel',o:ORDER_ST,ro:!isNew&&!can('orders','approve')},
     {k:'channel',l:'Sales channel',t:'sel',o:['ivevar.com','ivevar.us','ivevar.in','Etsy','Sales executive']},
     {k:'lines',l:'Items',t:'lines',cols:OL_COLS()},
+    {k:'productFiles',l:'Product photo(s)',t:'file',accept:'image/*',max:15,btn:'Upload product photo',w:4},
     {k:'hrP',l:'Pricing & profit',t:'hr'},
     {k:'saleValue',l:'Total order value ($)',t:'num',req:1,hint:'What the customer pays'},
     {k:'usdRate',l:'Exchange rate → INR',ro:1,calc:v=>{const c=v.currency||'USD';return c==='INR'?'1.00 (INR)':fxRate(c).toFixed(2)+' ₹ / '+c},hint:'Admin-set rate — locked for this order'},
@@ -682,7 +686,7 @@ function orderForm(o){
     {k:'courierINR',l:'Courier expense (₹)',t:'num'},
     {k:'profitPreview',l:'Profit before marketing (₹)',ro:1,calc:v=>{const p=toINRat(num(v.saleValue),v.currency||'USD',fxRate(v.currency||'USD'))-num(v.makingCostINR)-num(v.courierINR);return money(p)}},
     {k:'sharePreview',l:'Sales share '+COMMISSION_PCT()+'% (₹)',ro:1,calc:v=>{const p=toINRat(num(v.saleValue),v.currency||'USD',fxRate(v.currency||'USD'))-num(v.makingCostINR)-num(v.courierINR);return money(r2(p*COMMISSION_PCT()/100))}},
-    ...(isNew?[{k:'advance',l:'Advance / deposit received now ($)',t:'num',hint:'Optional — upload its screenshot next; an admin verifies it'}]:[]),
+    ...(isNew?[{k:'advance',l:'Advance / deposit received now ($)',t:'num',hint:'Optional — add its screenshot below; an admin confirms it'},{k:'paymentShot',l:'Payment screenshot',t:'file',accept:'image/*',max:1,btn:'Upload payment screenshot',w:2}]:[]),
     {k:'salesBy',l:'Sales executive',t:'sel',o:()=>USERS.filter(u=>u.active!==false).map(u=>[u.id,u.name]),d:ME.id},
     {k:'hrX',l:'Shipping address',t:'hr'},
     {k:'addr1',l:'Address line 1',w:2},{k:'addr2',l:'Address line 2 (optional)',w:2},
@@ -707,18 +711,17 @@ function orderForm(o){
      v.customer=cust.id;v.email=v.custEmail||v.email||'';v.phone=phone;v.phoneCC=v.custCC||'';v.phoneNum=v.custPhone||'';v.country=v.custCountry||'';v.shipTo=shipTo;
      delete v.custName;delete v.custEmail;delete v.custPhone;delete v.custCC;delete v.custCountry;delete v.orderIdDisplay;delete v.profitPreview;delete v.sharePreview;
      const adv=num(v.advance);delete v.advance;
+     const prodFiles=Array.isArray(v.productFiles)?v.productFiles:[];delete v.productFiles;
+     const payShot=(Array.isArray(v.paymentShot)?v.paymentShot:[])[0]||null;delete v.paymentShot;
+     if(prodFiles.length)v.productPhotos=[...(v.productPhotos||[]),...prodFiles];
      if(!v.salesBy)v.salesBy=ME.id;
      v.usdRate=fxRate(v.currency||'USD');
      v.lines=v.lines.map(l=>({qty:1,status:'Pending',...l}));
      if(isNew)v.history=[{ts:nowISO(),by:ME.id,to:v.status,note:'Order created'}];
      else if(o.status!==v.status)v.history=[...(o.history||[]),{ts:nowISO(),by:ME.id,from:o.status,to:v.status,note:'Edited'}];
      let s=await save('orders',v);
-     if(isNew&&adv>0){const pid=uid();const pay={pid,amount:adv,currency:v.currency,method:'Advance / deposit',date:today(),verified:false,by:ME.id,createdAt:nowISO()};
-       s=await save('orders',{...s,payments:[pay]},{silent:1,action:'advance payment'});
-       toast('Advance '+fcur(adv,v.currency)+' recorded — upload its screenshot');
-       orderDetail(byId('orders',s.id)||s);
-       pickFiles(async files=>{const o2=byId('orders',s.id)||s;const ps=orderPayments(o2).map(p=>p.pid===pid?{...p,screenshot:files[0]}:p);await save('orders',{...o2,payments:ps},{silent:1,action:'payment screenshot'});const op=$('.ov');if(op)op.remove();orderDetail(byId('orders',s.id))},'image/*',1);
-       return}
+     if(isNew&&adv>0){const pid=uid();const pay={pid,amount:adv,currency:v.currency,method:'Advance / deposit',date:today(),verified:false,by:ME.id,createdAt:nowISO()};if(payShot)pay.screenshot=payShot;
+       s=await save('orders',{...s,payments:[pay]},{silent:1,action:'advance payment'});toast('Advance '+fcur(adv,v.currency)+(payShot?' recorded with screenshot ✓':' recorded — admin will confirm it'));}
      setTimeout(()=>orderDetail(byId('orders',s.id)||s),60)}})}
 /* --- order stage pipeline (sales can advance) --- */
 function stageStepper(o){const cur=stageIdx(orderStage(o));
@@ -895,6 +898,13 @@ function tasksCard(admin){const tt=today();let list=S.tasks.filter(t=>admin||t.a
 
 /* ============ ADMIN DASHBOARD ============ */
 var EYE=false,SEYE=false;let AD_P='month';
+function pendingPaymentsCard(){
+  const rows=[];S.orders.forEach(o=>orderPayments(o).filter(p=>!p.verified).forEach(p=>rows.push({o,p})));
+  if(!rows.length)return '';
+  rows.sort((a,b)=>(b.p.createdAt||'').localeCompare(a.p.createdAt||''));
+  const tm=iso=>{try{return iso?new Date(iso).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}catch(e){return ''}};
+  const canOk=can('accounts','approve')||can('orders','approve');
+  return `<div class="card" id="pendpay"><div class="cap">💳 Payments to confirm <span class="pill warn">${rows.length}</span></div><div class="paylist">${rows.map(({o,p})=>`<div class="payrow"><div style="flex:1;min-width:0"><b>${fcur(p.amount,p.currency||ordCur(o))}</b> · ${esc(custName(o.customer))} <span class="note">(${esc(o.no)})</span><div class="note">${esc(p.method||'Advance')} · by ${esc(userName(p.by))} · ${esc(tm(p.createdAt)||fdate(p.date))}</div></div>${p.screenshot?`<a href="${esc(p.screenshot.url)}" target="_blank" rel="noopener" class="thumb"><img src="${esc(p.screenshot.url)}" alt="screenshot"></a>`:'<span class="note">no screenshot yet</span>'}${canOk?`<button class="btn sm good" onclick="setPayConf('${o.id}','${p.pid}','${ME.id}')">Approve</button>`:''}<button class="btn sm" onclick="orderDetail(byId('orders','${o.id}'))">Open</button></div>`).join('')}</div></div>`}
 function viewAdminDash(){
   const wk=(()=>{const d=new Date();d.setDate(d.getDate()-((d.getDay()+6)%7));return ymd(d)})();
   const from=AD_P==='today'?today():AD_P==='week'?wk:AD_P==='month'?today().slice(0,7)+'-01':AD_P==='year'?today().slice(0,4)+'-01-01':'';
@@ -912,6 +922,7 @@ function viewAdminDash(){
   const al=alerts();
   return `<div class="sd-head"><div><h1>${hi}, ${esc((ME.name||'').split(' ')[0])}</h1><div class="note">${esc(roleLabel(ME))} · ${esc(SET.company.name)}</div></div></div>
   <div style="margin-bottom:16px">${taskTiles(true)}</div>
+  ${(function(){var c=pendingPaymentsCard();return c?'<div style="margin-bottom:16px">'+c+'</div>':''})()}
   <div class="grid g2" style="margin-bottom:16px">${attendanceToday()}${tasksCard(true)}</div>
   <div class="card" style="margin-bottom:16px"><div class="cap">Cash balance</div>
    <div class="cashrow"><div><div class="note">Total</div><div class="kpi gold"><span class="v mv">${cm(cashBal())}${eyeBtn('EYE')}</span></div></div><div><div class="note">Cash</div><div class="kpi"><span class="v mv">${cm(cashBal('Cash'))}${eyeBtn('EYE')}</span></div></div><div><div class="note">Bank</div><div class="kpi"><span class="v mv">${cm(cashBal('Bank'))}${eyeBtn('EYE')}</span></div></div></div></div>

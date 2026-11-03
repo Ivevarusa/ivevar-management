@@ -12,6 +12,7 @@ function inputHTML(f,v,attr){
   if(t==='cur'){const code=v||f.d||'USD';return `<div class="curpick" data-curpick><input type="hidden" ${a} value="${esc(code)}">${curBtn(code)}<div class="curmenu">${CURRENCIES.map(([c,name])=>`<div class="curopt ${c===code?'on':''}" data-code="${esc(c)}">${curFlag(c)}<span>${esc(name)}</span></div>`).join('')}</div></div>`}
   if(t==='ccode'){const code=v||f.d||'+1';const sel=PHONE_CODES.find(p=>p[0]===code)||['+1','us','United States'];return `<div class="curpick ccpick" data-curpick><input type="hidden" ${a} value="${esc(code)}">${ccBtn(sel)}<div class="curmenu"><input class="ccsearch" placeholder="Search country or code…" autocomplete="off">${PHONE_CODES.map(([d,iso,name])=>`<div class="curopt ${d===code&&iso===sel[1]?'on':''}" data-code="${esc(d)}" data-flag="${esc(iso)}" data-lbl="${esc(d)}">${flagImg(iso)}<span>${esc(d)}&nbsp;&nbsp;${esc(name)}</span></div>`).join('')}</div></div>`}
   if(t==='sel'||t==='ref'){const ops=optList(f.o);const ph=f.req?'Select…':'';return `<select ${a}><option value="">${ph}</option>${ops.map(([k,l])=>`<option value="${esc(k)}" ${String(k)===String(v??'')?'selected':''}>${esc(l)}</option>`).join('')}${v&&!ops.some(([k])=>String(k)===String(v))?`<option value="${esc(v)}" selected>${esc(v)}</option>`:''}</select>`}
+  if(t==='file'){const files=Array.isArray(v)?v:[];return `<div class="fileup" data-fileup><input type="hidden" ${a} value="${esc(JSON.stringify(files))}"><button type="button" class="btn sm fileup-add" data-accept="${esc(f.accept||'image/*')}" data-max="${f.max||10}">📎 ${esc(f.btn||'Upload')}</button><div class="fileup-prev">${files.map(fl=>`<img src="${esc(fl.url)}" alt="">`).join('')}</div></div>`}
   if(t==='bool')return `<label style="display:flex;gap:6px;align-items:center;padding-top:6px"><input type="checkbox" ${a} ${v?'checked':''} style="width:auto"> ${esc(f.cl||'Yes')}</label>`;
   if(t==='chk'){const ops=optList(f.o);const vs=v||[];return `<div class="chk" ${a}>${ops.map(([k,l])=>`<label><input type="checkbox" value="${esc(k)}" ${vs.includes(k)?'checked':''}> ${esc(l)}</label>`).join('')}</div>`}
   const ty=t==='num'?'number" step="any':t==='date'?'date':t==='dt'?'datetime-local':t==='time'?'time':t==='email'?'email':t==='tel'?'tel':'text';
@@ -31,6 +32,7 @@ function readForm(root,fields){
     if(f.t==='chk')v[f.k]=[...el.querySelectorAll('input:checked')].map(i=>i.value);
     else if(f.t==='bool')v[f.k]=el.checked;
     else if(f.t==='num')v[f.k]=el.value===''?'':num(el.value);
+    else if(f.t==='file'){try{v[f.k]=JSON.parse(el.value||'[]')}catch(e){v[f.k]=[]}}
     else v[f.k]=el.value});
   return v}
 
@@ -130,6 +132,7 @@ document.addEventListener('click',e=>{
   if(btn){e.preventDefault();const pick=btn.closest('[data-curpick]');const open=pick.classList.contains('open');document.querySelectorAll('.curpick.open').forEach(p=>p.classList.remove('open'));if(!open)pick.classList.add('open');return}
   document.querySelectorAll('.curpick.open').forEach(p=>{if(!p.contains(e.target))p.classList.remove('open')})});
 document.addEventListener('input',e=>{if(e.target.classList&&e.target.classList.contains('ccsearch')){const q=e.target.value.trim().toLowerCase();e.target.closest('.curmenu').querySelectorAll('.curopt').forEach(o=>{o.style.display=o.textContent.toLowerCase().includes(q)?'':'none'})}});
+document.addEventListener('click',e=>{const add=e.target.closest('.fileup-add');if(!add)return;e.preventDefault();const wrap=add.closest('[data-fileup]');const hid=wrap.querySelector('input[type=hidden]');const prev=wrap.querySelector('.fileup-prev');const max=+add.dataset.max||10;let cur=[];try{cur=JSON.parse(hid.value||'[]')}catch(x){}const rem=max-cur.length;if(rem<=0){toast('Limit reached — remove some first.',true);return}pickFiles(fs=>{const next=[...cur,...fs];hid.value=JSON.stringify(next);prev.innerHTML=next.map(fl=>`<img src="${esc(fl.url)}" alt="">`).join('');hid.dispatchEvent(new Event('change',{bubbles:true}))},add.dataset.accept||'image/*',rem)});
 
 function openRecord(c,id){const x=byId(c,id);if(!x)return;const fn={orders:orderDetail,leads:leadDetail,quotes:quoteForm,customers:x=>masterForm('customers',x),suppliers:x=>masterForm('suppliers',x),karigars:karigarDetail,challans:challanDetail,designs:designDetail,jobs:jobDetail,vouchers:voucherView,invoices:x=>accForm('invoices',x),dispatches:dispatchForm,qc:qcForm,pos:poForm,wastage:wastageForm}[c];fn&&fn(x)}
 
