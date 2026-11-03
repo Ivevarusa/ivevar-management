@@ -319,7 +319,14 @@ tbody tr.click:hover td{background:var(--surface2)}
 .curopt:hover{background:var(--surface2)}
 .curopt.on{background:var(--accent-soft)}
 /* ---- settings page ---- */
-.setwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;max-width:1160px;align-items:start}
+.setwrap{display:flex;flex-direction:column;gap:16px;max-width:1180px}
+.setrow.link{cursor:pointer}
+.setrow.link:hover{background:var(--surface2)}
+.chev{color:var(--muted);font-size:22px;line-height:1;flex:none;padding-left:8px}
+.sethint{font-size:12.5px;color:var(--muted);text-align:center;padding:2px 4px}
+.setcontact{flex-wrap:wrap;gap:12px}
+.cbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.cbtns .btn{text-decoration:none}
 .blogowrap{display:block;background:#fff;border-radius:10px;padding:9px 12px;box-shadow:0 1px 3px #0003}
 .blogo{display:block;width:100%;height:auto}
 .brand .blogowrap+small{display:block;margin-top:9px}
@@ -1914,30 +1921,54 @@ setInterval(()=>{if(ROUTE==='chat'&&!document.hidden&&TOKEN)sync()},4000);
 function viewSettings(){
   const theme=PREF.get('theme','cream');const size=PREF.get('size','normal');const on=(k,d)=>PREF.get(k,d)==='1';
   const push='Notification'in window?(Notification.permission==='granted'?'On':Notification.permission==='denied'?'Blocked':'Allow'):'n/a';
-  return phead('Settings','Appearance, notifications and your account.','')+`<div class="setwrap">
+  const c=SET.company||{};const digits=(c.phone||'').replace(/[^0-9]/g,'');const site=SET.website||'https://ivevar.com';const admin=can('setup','approve');
+  return phead('Settings','App look, notifications, office and your account.','')+`<div class="setwrap">
    <div class="card setcard"><div class="cap2">🎨 Appearance</div>
-    <div class="setrow"><div><b>Theme</b><div class="note">Pick a colour you like</div></div><div class="swatches">${THEMES.map(([id,name,ac,bg])=>`<button class="swatch ${theme===id?'on':''}" onclick="setTheme('${id}')"><span class="sw" style="background:${bg}"><i style="background:${ac}"></i></span>${name}</button>`).join('')}</div></div>
-    <div class="setrow"><div><b>Text size</b></div><div class="seg">${[['normal','Normal'],['large','Large'],['larger','Larger']].map(([k,l])=>`<button class="${size===k?'on':''}" onclick="setSizePref('${k}')">${l}</button>`).join('')}</div></div>
-    <div class="setrow"><div><b>Language</b></div><select class="setsel" onchange="LANG=this.value;try{localStorage.setItem('erp_lang',LANG)}catch(e){};render()"><option value="en" ${LANG==='en'?'selected':''}>English</option><option value="hi" ${LANG==='hi'?'selected':''}>हिंदी</option><option value="gu" ${LANG==='gu'?'selected':''}>ગુજરાતી</option></select></div>
+    <div class="setrow"><div><b>Theme</b><div class="note">Pick a colour theme for the app</div></div><div class="swatches">${THEMES.map(([id,name,ac,bg])=>`<button class="swatch ${theme===id?'on':''}" onclick="setTheme('${id}')"><span class="sw" style="background:${bg}"><i style="background:${ac}"></i></span>${name}</button>`).join('')}</div></div>
+    <div class="setrow"><div><b>Text size</b><div class="note">Make the text bigger across the app</div></div><div class="seg">${[['normal','Normal'],['large','Large'],['larger','Larger']].map(([k,l])=>`<button class="${size===k?'on':''}" onclick="setSizePref('${k}')">${l}</button>`).join('')}</div></div>
+    <div class="setrow"><div><b>Language</b><div class="note">Choose your preferred language</div></div><select class="setsel" onchange="LANG=this.value;try{localStorage.setItem('erp_lang',LANG)}catch(e){};render()"><option value="en" ${LANG==='en'?'selected':''}>English</option><option value="hi" ${LANG==='hi'?'selected':''}>हिंदी</option><option value="gu" ${LANG==='gu'?'selected':''}>ગુજરાતી</option></select></div>
    </div>
    <div class="card setcard"><div class="cap2">🔔 Notifications</div>
-    <div class="setrow"><div><b>Sound for new chat messages</b></div><label class="swt"><input type="checkbox" ${on('sound','1')?'checked':''} onchange="PREF.set('sound',this.checked?'1':'0');this.checked&&beep()"><span></span></label></div>
+    <div class="setrow"><div><b>Sound for new chat messages</b><div class="note">A short sound when a message arrives while the app is open</div></div><label class="swt"><input type="checkbox" ${on('sound','1')?'checked':''} onchange="PREF.set('sound',this.checked?'1':'0');this.checked&&beep()"><span></span></label></div>
     <div class="setrow"><div><b>Vibrate for new messages</b><div class="note">On phones</div></div><label class="swt"><input type="checkbox" ${on('vibrate','1')?'checked':''} onchange="PREF.set('vibrate',this.checked?'1':'0')"><span></span></label></div>
-    <div class="setrow"><div><b>Pop-up notifications</b><div class="note">Alert when the app is in the background</div></div>${push==='Allow'?`<button class="btn pri" onclick="askPush()">Allow</button>`:`<span class="pill ${push==='On'?'good':'warn'}">${push}</span>`}</div>
+    <div class="setrow"><div><b>Pop-up notifications</b><div class="note">Get an alert when the app is in the background</div></div>${push==='Allow'?`<button class="btn pri" onclick="askPush()">Allow</button>`:`<span class="pill ${push==='On'?'good':'warn'}">${push}</span>`}</div>
    </div>
+   <div class="card setcard"><div class="cap2">💬 Chat &amp; media</div>
+    <div class="setrow"><div><b>Save photos, videos &amp; voice notes</b><div class="note">Tap ⬇ Save under any photo, video or voice message in a chat to download it to your device.</div></div></div>
+    <div class="setrow link" onclick="go('chat')"><div><b>Open chat</b><div class="note">Team &amp; customer messages</div></div><span class="chev">›</span></div>
+   </div>
+   ${admin?`<div class="card setcard"><div class="cap2">🏢 Office</div>
+    <div class="setrow link" onclick="companyForm()"><div><b>Company profile</b><div class="note">Name &amp; address on order slips, USD→INR rate, commission %</div></div><span class="chev">›</span></div>
+    <div class="setrow link" onclick="go('setup')"><div><b>Staff &amp; users</b><div class="note">Add team members and set their permissions</div></div><span class="chev">›</span></div>
+   </div>`:''}
    <div class="card setcard"><div class="cap2">👤 Account</div>
     <div class="setrow"><div><b>${esc(ME.name)}</b><div class="note">${esc(ME.email)} · ${esc(roleLabel(ME))}</div></div></div>
-    <div class="setrow"><div>Change password</div><button class="btn" onclick="pwForm()">Change</button></div>
-    <div class="setrow"><div>Sign out of this account</div><button class="btn dng" onclick="logout()">Logout</button></div>
+    <div class="setrow link" onclick="pwForm()"><div><b>Change password</b></div><span class="chev">›</span></div>
+    <div class="setrow link" onclick="logout()"><div><b>Sign out</b><div class="note">Log out of this account</div></div><span class="chev">›</span></div>
    </div>
    <div class="card setcard"><div class="cap2">📱 App</div>
     <div class="setrow"><div><b>Refresh app</b><div class="note">Load the latest version</div></div><button class="btn" onclick="location.reload(true)">Refresh</button></div>
     <div class="setrow"><div><b>About</b><div class="note">Ivevar Management office software By Ivevar Jewel LLP</div></div></div>
    </div>
+   <div class="sethint">Like an app on your phone: browser menu → “Add to Home screen”</div>
    <div class="card setcard"><div class="cap2">💬 Contact / support</div>
-    <div class="note" style="line-height:1.7">${esc(SET.company.name)}<br>${SET.company.phone?'📞 '+esc(SET.company.phone)+'<br>':''}${SET.company.email?'📧 '+esc(SET.company.email)+'<br>':''}${esc(SET.company.address||'')}</div>
+    <div class="setrow setcontact"><div><b>${esc(c.name||'')}</b><div class="note">${esc(c.address||'')}</div></div>
+     <div class="cbtns">${c.phone?`<a class="btn" href="tel:${esc(c.phone.replace(/\s/g,''))}">📞 Call</a>`:''}${digits?`<a class="btn" href="https://wa.me/${digits}" target="_blank" rel="noopener">WhatsApp</a>`:''}${c.email?`<a class="btn" href="mailto:${esc(c.email)}">✉️ Email</a>`:''}<a class="btn" href="${esc(site)}" target="_blank" rel="noopener">🌐 Website</a></div>
+    </div>
    </div>
   </div>`}
+function companyForm(){const c=SET.company||{};openForm({title:'Company profile',wide:1,fields:[
+  {k:'name',l:'Company name (on order slips)',req:1,w:2},
+  {k:'address',l:'Address',t:'ta',w:2},
+  {k:'phone',l:'Phone / WhatsApp'},
+  {k:'email',l:'Email',t:'email'},
+  {k:'website',l:'Website'},
+  {k:'usdInr',l:'USD → INR rate',t:'num',d:88},
+  {k:'commissionPct',l:'Sales commission %',t:'num',d:25}
+],value:{name:c.name||'',address:c.address||'',phone:c.phone||'',email:c.email||'',website:SET.website||'https://ivevar.com',usdInr:SET.usdInr||88,commissionPct:SET.commissionPct||25},async onSave(v){
+  const company={...SET.company,name:(v.name||'').trim(),address:(v.address||'').trim(),phone:(v.phone||'').trim(),email:(v.email||'').trim()};
+  await saveSettings({company,website:(v.website||'').trim(),usdInr:num(v.usdInr)||88,commissionPct:num(v.commissionPct)||25},'company profile');
+}})}
 function setTheme(t){PREF.set('theme',t);applyPrefs();render()}
 function setSizePref(s){PREF.set('size',s);applyPrefs();render()}
 function askPush(){if(!('Notification'in window)){toast('Notifications are not supported here.',true);return}Notification.requestPermission().then(p=>{toast(p==='granted'?'Notifications turned on ✓':'Not allowed');render()})}

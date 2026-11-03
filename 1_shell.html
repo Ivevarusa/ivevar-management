@@ -319,7 +319,14 @@ tbody tr.click:hover td{background:var(--surface2)}
 .curopt:hover{background:var(--surface2)}
 .curopt.on{background:var(--accent-soft)}
 /* ---- settings page ---- */
-.setwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;max-width:1160px;align-items:start}
+.setwrap{display:flex;flex-direction:column;gap:16px;max-width:1180px}
+.setrow.link{cursor:pointer}
+.setrow.link:hover{background:var(--surface2)}
+.chev{color:var(--muted);font-size:22px;line-height:1;flex:none;padding-left:8px}
+.sethint{font-size:12.5px;color:var(--muted);text-align:center;padding:2px 4px}
+.setcontact{flex-wrap:wrap;gap:12px}
+.cbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.cbtns .btn{text-decoration:none}
 .blogowrap{display:block;background:#fff;border-radius:10px;padding:9px 12px;box-shadow:0 1px 3px #0003}
 .blogo{display:block;width:100%;height:auto}
 .brand .blogowrap+small{display:block;margin-top:9px}
