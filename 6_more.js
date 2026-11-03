@@ -434,7 +434,7 @@ function render(){
   if(!LOADED){return}
   $('#app').hidden=false;$('#loginRoot').hidden=true;
   renderNav();
-  $('#who').innerHTML=`<span>${esc(ME.name)} · ${esc(roleLabel(ME))}</span><button class="btn sm" onclick="pwForm()">Password</button><button class="btn sm" onclick="logout()">Sign out</button>`;
+  $('#who').innerHTML='';
   if(!VIEWS[ROUTE])ROUTE='dashboard';
   if(!can(ROUTE)){const first=MODS.find(m=>can(m[0]));$('#view').innerHTML=first?`<div class="empty"><b>No access to this module</b>Ask an admin if you need it.</div>`:`<div class="empty"><b>No modules assigned</b>Ask an admin to set your role.</div>`;return}
   const y=window.scrollY;$('#view').innerHTML=VIEWS[ROUTE]();window.scrollTo(0,y);if(ROUTE==='chat')setTimeout(scrollChatBottom,30)}

@@ -23,7 +23,7 @@ function toast(msg,err){const t=document.createElement('div');t.className='toast
 
 /* ---------- personal preferences: theme, text size, notifications ---------- */
 const PREF={get:(k,d)=>{try{const v=localStorage.getItem('erp_'+k);return v==null?d:v}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem('erp_'+k,v)}catch(e){}}};
-const THEMES=[['cream','Cream','#e8820c','#fffdf9'],['midnight','Midnight','#f59e0b','#161c29'],['royal','Royal','#e0b84a','#1f1830'],['emerald','Emerald','#2ecc8f','#12201b'],['ocean','Ocean','#0e7490','#ffffff']];
+const THEMES=[['cream','Cream','#e8820c','#fffdf9'],['sand','Sand','#b07a1e','#fffdf6'],['rose','Rose','#c2487a','#fffafb'],['sunset','Sunset','#e2572e','#fffaf7'],['slate','Slate','#3b6ea5','#ffffff'],['ocean','Ocean','#0e7490','#ffffff'],['emerald','Emerald','#2ecc8f','#12201b'],['forest','Forest','#4caf50','#121d14'],['midnight','Midnight','#f59e0b','#161c29'],['royal','Royal','#e0b84a','#1f1830'],['graphite','Graphite','#5b8def','#191b1f'],['crimson','Crimson','#e23b4e','#211417']];
 function applyPrefs(){try{const th=PREF.get('theme','cream');if(th&&th!=='cream')document.documentElement.dataset.theme=th;else delete document.documentElement.dataset.theme;const sz=PREF.get('size','normal');document.documentElement.style.zoom=sz==='large'?'1.1':sz==='larger'?'1.22':''}catch(e){}}
 applyPrefs();
 let _ac;function beep(){try{_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();const o=_ac.createOscillator(),g=_ac.createGain();o.connect(g);g.connect(_ac.destination);o.frequency.value=880;g.gain.value=0.05;o.start();o.frequency.exponentialRampToValueAtTime(1320,_ac.currentTime+0.09);g.gain.exponentialRampToValueAtTime(0.0001,_ac.currentTime+0.25);o.stop(_ac.currentTime+0.27)}catch(e){}}
@@ -1620,7 +1620,7 @@ function render(){
   if(!LOADED){return}
   $('#app').hidden=false;$('#loginRoot').hidden=true;
   renderNav();
-  $('#who').innerHTML=`<span>${esc(ME.name)} · ${esc(roleLabel(ME))}</span><button class="btn sm" onclick="pwForm()">Password</button><button class="btn sm" onclick="logout()">Sign out</button>`;
+  $('#who').innerHTML='';
   if(!VIEWS[ROUTE])ROUTE='dashboard';
   if(!can(ROUTE)){const first=MODS.find(m=>can(m[0]));$('#view').innerHTML=first?`<div class="empty"><b>No access to this module</b>Ask an admin if you need it.</div>`:`<div class="empty"><b>No modules assigned</b>Ask an admin to set your role.</div>`;return}
   const y=window.scrollY;$('#view').innerHTML=VIEWS[ROUTE]();window.scrollTo(0,y);if(ROUTE==='chat')setTimeout(scrollChatBottom,30)}
