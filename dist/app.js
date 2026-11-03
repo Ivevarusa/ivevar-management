@@ -23,9 +23,33 @@ function toast(msg,err){const t=document.createElement('div');t.className='toast
 
 /* ---------- personal preferences: theme, text size, notifications ---------- */
 const PREF={get:(k,d)=>{try{const v=localStorage.getItem('erp_'+k);return v==null?d:v}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem('erp_'+k,v)}catch(e){}}};
-const THEMES=[['ivory','Luxury Ivory','#b08a4a','#ffffff'],['cream','Cream','#e8820c','#fffdf9'],['sand','Sand','#b07a1e','#fffdf6'],['rose','Rose','#c2487a','#fffafb'],['sunset','Sunset','#e2572e','#fffaf7'],['slate','Slate','#3b6ea5','#ffffff'],['ocean','Ocean','#0e7490','#ffffff'],['emerald','Emerald','#2ecc8f','#12201b'],['forest','Forest','#4caf50','#121d14'],['midnight','Midnight','#d5b478','#17222b'],['royal','Royal','#e0b84a','#1f1830'],['graphite','Graphite','#5b8def','#191b1f'],['crimson','Crimson','#e23b4e','#211417']];
+const THEMES=[['ivory','Luxury Ivory','#b08a4a','#ffffff'],['diwali','Diwali 🪔','#f5b43f','#241640'],['cream','Cream','#e8820c','#fffdf9'],['sand','Sand','#b07a1e','#fffdf6'],['rose','Rose','#c2487a','#fffafb'],['sunset','Sunset','#e2572e','#fffaf7'],['slate','Slate','#3b6ea5','#ffffff'],['ocean','Ocean','#0e7490','#ffffff'],['emerald','Emerald','#2ecc8f','#12201b'],['forest','Forest','#4caf50','#121d14'],['midnight','Midnight','#d5b478','#17222b'],['royal','Royal','#e0b84a','#1f1830'],['graphite','Graphite','#5b8def','#191b1f'],['crimson','Crimson','#e23b4e','#211417']];
 /* Luxury Ivory is the recommended default; any theme a user has explicitly chosen is preserved (stored under erp_theme). */
-function applyPrefs(){try{const th=PREF.get('theme','ivory');document.documentElement.dataset.theme=th;const sz=PREF.get('size','normal');document.documentElement.style.zoom=sz==='large'?'1.1':sz==='larger'?'1.22':''}catch(e){}}
+function applyPrefs(){try{const th=PREF.get('theme','ivory');document.documentElement.dataset.theme=th;const sz=PREF.get('size','normal');document.documentElement.style.zoom=sz==='large'?'1.1':sz==='larger'?'1.22':'';if(th==='diwali')startFireworks();else stopFireworks()}catch(e){}}
+/* 🪔 Diwali fireworks — transparent full-screen canvas overlay, clicks pass through; runs only on the Diwali theme */
+let FW=false,FW_RAF=0;
+function startFireworks(){
+  if(FW)return;FW=true;
+  let cv=document.getElementById('fwcanvas');
+  if(!cv){cv=document.createElement('canvas');cv.id='fwcanvas';cv.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:9998';document.body.appendChild(cv);window.addEventListener('resize',()=>{if(cv){cv.width=innerWidth;cv.height=innerHeight}})}
+  cv.width=innerWidth;cv.height=innerHeight;cv.style.display='block';
+  const x=cv.getContext('2d');let parts=[],rockets=[],last=0;
+  const cols=['#ffd34d','#ff6b6b','#5bd1ff','#b388ff','#6bff95','#ff9f40','#ff5bd1','#ffffff'];
+  const rc=()=>cols[Math.random()*cols.length|0];
+  const launch=()=>{const W=cv.width;rockets.push({x:W*(0.12+Math.random()*0.76),y:cv.height,ty:cv.height*(0.12+Math.random()*0.4),vy:-(7.5+Math.random()*3.5),c:rc()})};
+  const burst=(X,Y,c)=>{const n=46+Math.random()*34;for(let i=0;i<n;i++){const a=Math.random()*6.2832,s=1+Math.random()*5.5;parts.push({x:X,y:Y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,c:Math.random()<0.28?rc():c})}};
+  function frame(t){
+    if(!FW){x.clearRect(0,0,cv.width,cv.height);cv.style.display='none';return}
+    x.clearRect(0,0,cv.width,cv.height);x.globalCompositeOperation='lighter';
+    if(t-last>650+Math.random()*700){last=t;launch();if(Math.random()<0.45)launch()}
+    rockets=rockets.filter(r=>{r.y+=r.vy;r.vy+=0.05;x.globalAlpha=1;x.fillStyle=r.c;x.beginPath();x.arc(r.x,r.y,2.2,0,6.3);x.fill();if(r.y<=r.ty||r.vy>=0){burst(r.x,r.y,r.c);return false}return true});
+    parts=parts.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.055;p.vx*=0.985;p.vy*=0.985;p.life-=0.012;if(p.life<=0)return false;x.globalAlpha=Math.max(0,p.life);x.fillStyle=p.c;x.beginPath();x.arc(p.x,p.y,2.3,0,6.3);x.fill();return true});
+    x.globalAlpha=1;x.globalCompositeOperation='source-over';
+    FW_RAF=requestAnimationFrame(frame)
+  }
+  FW_RAF=requestAnimationFrame(frame)
+}
+function stopFireworks(){FW=false;if(FW_RAF)cancelAnimationFrame(FW_RAF);const cv=document.getElementById('fwcanvas');if(cv){try{cv.getContext('2d').clearRect(0,0,cv.width,cv.height)}catch(e){}cv.style.display='none'}}
 /* ---------- professional outline icon set (inline SVG, inherits currentColor) ---------- */
 const ICONS={
  dashboard:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
