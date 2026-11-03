@@ -393,7 +393,7 @@ function viewSettings(){
    </div>
    <div class="card setcard"><div class="cap2">📱 App</div>
     <div class="setrow"><div><b>Refresh app</b><div class="note">Load the latest version</div></div><button class="btn" onclick="location.reload(true)">Refresh</button></div>
-    <div class="setrow"><div><b>About</b><div class="note">Ivevar Management — office software for ${esc(SET.company.name)}</div></div></div>
+    <div class="setrow"><div><b>About</b><div class="note">Ivevar Management office software By Ivevar Jewel LLP</div></div></div>
    </div>
    <div class="card setcard"><div class="cap2">💬 Contact / support</div>
     <div class="note" style="line-height:1.7">${esc(SET.company.name)}<br>${SET.company.phone?'📞 '+esc(SET.company.phone)+'<br>':''}${SET.company.email?'📧 '+esc(SET.company.email)+'<br>':''}${esc(SET.company.address||'')}</div>
