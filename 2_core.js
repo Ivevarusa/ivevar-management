@@ -265,7 +265,7 @@ const stageIdx=s=>{const i=ORDER_STAGE.indexOf(s);return i<0?0:i};
 
 /* ---------- currency (website orders are USD; manual orders are ₹) ---------- */
 const usdRate=()=>num(SET.usdInr)||88;
-const fxRate=cur=>{if(!cur||cur==='INR')return 1;const r=SET.fxRates&&num(SET.fxRates[cur]);return r||(cur==='USD'?usdRate():1)};  // admin-set currency→INR rate
+const fxRate=cur=>{if(!cur||cur==='INR')return 1;const r=SET.fxRates&&num(SET.fxRates[cur]);return r||usdRate()};  // admin-set currency→INR rate; unknown/unset currency falls back to the USD rate (never 1, which would price a foreign order as if it were ₹)
 const ordRate=o=>num(o&&o.usdRate)||fxRate(ordCur(o))||usdRate();           // per-order rate (locked when the order is taken)
 const ordCur=o=>o&&o.currency?o.currency:'INR';
 const toINR=(v,cur)=>(cur&&cur!=='INR')?num(v)*usdRate():num(v);

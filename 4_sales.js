@@ -202,7 +202,7 @@ function orderForm(o){
     {k:'courierINR',l:'Courier expense (₹)',t:'num'},
     {k:'courierUSD',l:'Courier (USD, auto)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;return fcur(r2(num(v.courierINR)/r),'USD')}},
     {k:'profitPreview',l:'Profit before marketing ($)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;const p=toINRat(num(v.saleValue),v.currency||'USD',r)-num(v.makingCostINR)-num(v.courierINR);return fcur(r2(p/r),'USD')}},
-    ...((commPctOf(ME.id)>0||ME.role==='admin')?[{k:'sharePreview',l:'Sales share '+(commPctOf(ME.id)||COMMISSION_PCT())+'% ($)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;const pct=commPctOf(ME.id)||(ME.role==='admin'?COMMISSION_PCT():0);const p=toINRat(num(v.saleValue),v.currency||'USD',r)-num(v.makingCostINR)-num(v.courierINR);return fcur(r2(p*pct/100/r),'USD')}}]:[]),
+    ...(commPctOf(ME.id)>0?[{k:'sharePreview',l:'Sales share '+commPctOf(ME.id)+'% ($)',ro:1,calc:v=>{const r=fxRate(v.currency||'USD')||88;const pct=commPctOf(ME.id);const p=toINRat(num(v.saleValue),v.currency||'USD',r)-num(v.makingCostINR)-num(v.courierINR);return fcur(r2(p*pct/100/r),'USD')}}]:[]),
     ...(isNew?[{k:'advance',l:'Advance / deposit received now ($)',t:'num',hint:'Optional — add its screenshot below; an admin confirms it'},{k:'payMethod',l:'Payment method (how it came)',t:'sel',o:PAY_METHODS},{k:'payMethodOther',l:'If "Other", specify which method'},{k:'paymentShot',l:'Payment screenshot',t:'file',accept:'image/*',max:1,btn:'Upload payment screenshot',w:2}]:[]),
     ...(ME.role==='admin'?[{k:'salesBy',l:'Sales executive',t:'sel',o:()=>USERS.filter(u=>u.active!==false).map(u=>[u.id,u.name]),d:ME.id}]:[]),
     {k:'hrX',l:'Shipping address',t:'hr'},
