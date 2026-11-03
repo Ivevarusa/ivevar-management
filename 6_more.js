@@ -449,7 +449,7 @@ function setSizePref(s){PREF.set('size',s);applyPrefs();render()}
 function askPush(){if(!('Notification'in window)){toast('Notifications are not supported here.',true);return}Notification.requestPermission().then(p=>{toast(p==='granted'?'Notifications turned on ✓':'Not allowed');render()})}
 
 /* ============ RENDER & BOOT ============ */
-const VIEWS={dashboard:viewDashboard,chat:viewChat,prefs:viewSettings,crm:viewCRM,quotes:viewQuotes,orders:viewOrders,designs:viewDesigns,purchase:viewPurchase,inventory:viewInventory,production:viewProduction,karigars:viewKarigars,wastage:viewWastage,qc:viewQC,dispatch:viewDispatch,accounts:viewAccounts,hr:viewHR,reports:viewReports,masters:viewMasters,setup:viewSetup,audit:viewAudit};
+const VIEWS={dashboard:viewDashboard,chat:viewChat,prefs:viewSettings,crm:viewCRM,quotes:viewQuotes,orders:viewOrders,vendors:viewVendors,buying:viewBuying,factory:viewFactory,designs:viewDesigns,purchase:viewPurchase,inventory:viewInventory,production:viewProduction,karigars:viewKarigars,wastage:viewWastage,qc:viewQC,dispatch:viewDispatch,accounts:viewAccounts,hr:viewHR,reports:viewReports,masters:viewMasters,setup:viewSetup,audit:viewAudit};
 function render(){
   if(!TOKEN){renderLogin();return}
   if(!LOADED){return}

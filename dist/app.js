@@ -179,6 +179,7 @@ function defaultSettings(){return{
 /* ---------- roles & permissions ---------- */
 const MODS=[
   ['dashboard','Dashboard','Overview','dashboard'],['chat','Chat','Overview','chat'],['crm','CRM & Leads','Sales','crm'],['quotes','Quotations','Sales','quotes'],['orders','Orders','Sales','orders'],
+  ['vendors','Vendors','Make','building'],['buying','Buying','Make','purchase'],['factory','Factory','Make','production'],
   ['designs','Designs','Make','designs'],['purchase','Purchase','Make','purchase'],['inventory','Inventory','Make','inventory'],['production','Production','Make','production'],['karigars','Karigars','Make','karigars'],['wastage','Wastage & Recovery','Make','wastage'],['qc','Quality Control','Make','qc'],['dispatch','Packing & Dispatch','Make','dispatch'],
   ['accounts','Accounts','Money','accounts'],['hr','HR & Payroll','Money','hr'],['reports','Reports','Money','reports'],
   ['masters','Masters','Admin','masters'],['setup','Staff & Users','Admin','setup'],['audit','Audit Log','Admin','audit'],['prefs','Settings','Account','prefs']];
@@ -188,7 +189,7 @@ const ROLES={admin:'Super Admin',office:'Ivevar Office'};
 const OFFICE_MODS=MODS.filter(m=>!['setup','audit'].includes(m[0])).map(m=>m[0]);
 const TITLES=['CEO','Accountant','Sales','Courier','Helper','Custom'];
 const TITLE_LABEL={CEO:'CEO',Accountant:'Accountant',Sales:'Sales person',Courier:'Courier / dispatch',Helper:'Office helper',Custom:'Custom access'};
-const TITLE_MODS={CEO:OFFICE_MODS,Accountant:['dashboard','orders','purchase','inventory','accounts','hr','reports','masters','dispatch'],Sales:['dashboard','quotes','orders','inventory','dispatch'],Courier:['dashboard','orders','qc','dispatch','inventory'],Helper:['dashboard','orders','dispatch','inventory']};
+const TITLE_MODS={CEO:OFFICE_MODS,Accountant:['dashboard','orders','vendors','buying','purchase','inventory','accounts','hr','reports','masters','dispatch'],Sales:['dashboard','quotes','orders','inventory','dispatch'],Courier:['dashboard','orders','qc','dispatch','inventory'],Helper:['dashboard','orders','dispatch','inventory']};
 const TITLE_APPROVE={CEO:OFFICE_MODS,Accountant:['purchase','inventory','accounts','hr','reports','masters'],Sales:[],Courier:['dispatch'],Helper:[]};
 function effMods(u){return Array.isArray(u.modules)?u.modules.slice():[]}
 function roleLabel(u){if(!u)return '';if(u.role==='admin')return 'Super Admin';return (u.title&&TITLE_LABEL[u.title])||'Ivevar Office'}
@@ -226,7 +227,7 @@ let LANG='en';try{LANG=localStorage.getItem('erp_lang')||'en'}catch(e){}
 const T=s=>(I18N[LANG]&&I18N[LANG][s])||s;
 
 /* ---------- data layer: Cloudflare Worker API (D1 + R2) ---------- */
-const COLLS=['tasks','punch','messages','cash','leads','quotes','orders','designs','pos','vouchers','pieces','jobs','karigars','challans','wastage','qc','dispatches','invoices','receipts','bills','payments','expenses','customers','suppliers','employees','attendance'];
+const COLLS=['tasks','punch','messages','cash','leads','quotes','orders','designs','pos','vouchers','pieces','jobs','karigars','challans','wastage','qc','dispatches','invoices','receipts','bills','payments','expenses','customers','suppliers','employees','attendance','vendors','purchases','factory'];
 const S={};COLLS.forEach(c=>S[c]=[]);
 let SET=defaultSettings();
 let USERS=[];let SINCE=0;let LOADED=false;const DEMO=false;
@@ -1046,6 +1047,16 @@ function productPanel(o){const ph=o.productPhotos||[];
   return `<div><h3>Product photos</h3>${ph.length?`<div class="files">${ph.map(f=>`<a href="${esc(f.url)}" target="_blank" rel="noopener"><img src="${esc(f.url)}" alt="${esc(f.name||'')}"></a>`).join('')}</div>`:'<div class="note">No product photos yet.</div>'}${can('orders','edit')?`<div style="margin-top:8px"><button class="btn sm" onclick="addProductPhotos('${o.id}')">+ Product photos</button></div>`:''}</div>`}
 function addProductPhotos(oid){const o=orderOf(oid);if(!o)return;const rem=MAX_PHOTOS-(o.productPhotos||[]).length;if(rem<=0){toast('Photo limit ('+MAX_PHOTOS+') reached.',true);return}pickFiles(async files=>{await save('orders',{...o,productPhotos:[...(o.productPhotos||[]),...files]},{action:'product photos',silent:1});toast('Product photos added');const open=$('.ov');if(open){open.remove();orderDetail(byId('orders',oid))}},'image/*',rem)}
 
+function procurePanel(o){
+  const ps=(S.purchases||[]).filter(r=>r.order===o.id),fj=(S.factory||[]).filter(r=>r.order===o.id);
+  if(!ps.length&&!fj.length&&!can('buying','view')&&!can('factory','view'))return '';
+  const buyINR=ps.filter(r=>r.status!=='Cancelled').reduce((s,r)=>s+(r.currency==='USD'?toINR(buyAmt(r),'USD'):buyAmt(r)),0);
+  const pt=ps.length?table([{l:'Ref',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Vendor',h:r=>esc(nameOf('vendors',r.vendor))},{l:'What',h:r=>esc(r.buyKind||'')},{l:'Amount',n:1,h:r=>fcur(buyAmt(r),r.currency||'INR')},{l:'Status',h:r=>stPill(r.status||'Ordered')}],ps,{onClick:buyForm}):'<div class="note">No purchases linked yet.</div>';
+  const ft=fj.length?table([{l:'Ref',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Factory',h:r=>esc(nameOf('vendors',r.factory))},{l:'Stage',h:r=>stPill(r.stage||'Assessment')},{l:'Spec',h:r=>facSpecShort(r)},{l:'Status',h:r=>stPill(r.status||'Sent')}],fj,{onClick:facForm}):'<div class="note">No factory jobs yet.</div>';
+  return `<div><h3>Procurement &amp; factory</h3>
+   <div class="note" style="margin:2px 0 4px">Buying</div>${pt}
+   <div class="note" style="margin:8px 0 4px">Factory</div>${ft}
+   ${buyINR?`<dl class="dl"><dt>Total buying cost</dt><dd class="num" style="text-align:left">${fcur(r2(buyINR/usdRate()),'USD')} <span class="note">${money(buyINR)}</span></dd></dl>`:''}</div>`}
 function orderDetail(o){
   o=byId('orders',o.id)||o;
   const jobs=S.jobs.filter(j=>j.order===o.id),dsp=S.dispatches.filter(d=>d.order===o.id),inv=S.invoices.filter(i=>i.order===o.id),cost=orderCost(o);
@@ -1058,14 +1069,17 @@ function orderDetail(o){
     <div><h3>Profit sheet</h3><dl class="dl"><dt>Order value</dt><dd class="num" style="text-align:left">${fcur(orderSaleRaw(o),ordCur(o))} <span class="note">· ${money(orderValueINR(o))} @ ${fq(ordRate(o))}</span></dd><dt>Making / product cost</dt><dd class="num">− ${uUSD(orderMakingINR(o))} <span class="note">${money(orderMakingINR(o))}</span></dd><dt>Courier expense</dt><dd class="num">− ${uUSD(orderCourierINR(o))} <span class="note">${money(orderCourierINR(o))}</span></dd><dt><b>Profit before marketing</b></dt><dd class="num"><b style="color:${orderProfit(o)<0?'var(--bad)':'var(--good)'}">${uUSD(orderProfit(o))}</b> <span class="note">${money(orderProfit(o))}</span>${orderValueINR(o)?' ('+fq(orderProfit(o)/orderValueINR(o)*100)+'%)':''}</dd>${commPctOf(orderSeller(o))>0?`<dt>Sales share (${commPctOf(orderSeller(o))}%)</dt><dd class="num" style="color:var(--accent)">${uUSD(orderCommission(o))} <span class="note">${money(orderCommission(o))}</span></dd>`:''}<dt>Sales executive</dt><dd>${esc(userName(orderSeller(o)))}</dd></dl></div>
     ${paymentsPanel(o)}
     ${productPanel(o)}
+    ${procurePanel(o)}
     ${qcPanel(o)}
     <div><h3>Dispatches</h3>${dsp.length?table([{l:'No.',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Date',h:r=>fdate(r.date)},{l:'Courier',h:r=>esc((r.courier||'')+' '+(r.tracking||''))},{l:'Status',h:r=>stPill(r.status)}],dsp,{onClick:dispatchForm}):'<div class="note">Nothing dispatched yet.</div>'}</div>
    </div>
    <div><h3>History</h3><ul class="timeline">${(o.history||[]).slice().reverse().map(h=>`<li>${h.from?esc(h.from)+' → ':''}<b>${esc(h.to||'')}</b> ${esc(h.note||'')}<small>${fdt(h.ts)} · ${esc(userName(h.by))}</small></li>`).join('')||'<li>Created</li>'}</ul></div>`,
-   foot:[btn(ic('print')+' Order print','data-print'),can('orders','edit')?btn('+ Payment','data-pay'):'',can('orders','edit')?btn('Edit','data-e'):'',can('orders','edit')?btn('Change status','data-st'):'',can('dispatch','edit')?btn('Pack & dispatch','data-dsp'):'',can('orders','approve')&&o.status!=='Closed'?btn('Close order','data-close-o','pri'):''].join(''),
+   foot:[btn(ic('print')+' Order print','data-print'),can('orders','edit')?btn('+ Payment','data-pay'):'',can('buying','edit')?btn('+ Buy','data-buy'):'',can('factory','edit')?btn('+ Factory job','data-fac'):'',can('orders','edit')?btn('Edit','data-e'):'',can('orders','edit')?btn('Change status','data-st'):'',can('dispatch','edit')?btn('Pack & dispatch','data-dsp'):'',can('orders','approve')&&o.status!=='Closed'?btn('Close order','data-close-o','pri'):''].join(''),
    onMount(ov,close){const b=s=>ov.querySelector(s);
     b('[data-print]').onclick=()=>printOrder(o);
     b('[data-pay]')&&(b('[data-pay]').onclick=()=>{close();addPaymentForm(o)});
+    b('[data-buy]')&&(b('[data-buy]').onclick=()=>{close();buyForm({order:o.id,date:today(),status:'Ordered',currency:'INR',unit:'pcs'})});
+    b('[data-fac]')&&(b('[data-fac]').onclick=()=>{close();facForm({order:o.id,sent:today(),stage:'Assessment',status:'Sent'})});
     ov.querySelectorAll('[data-mkjob]').forEach(x=>x.onclick=()=>{close();const i=+x.dataset.mkjob;const l=o.lines[i];jobForm({order:o.id,line:i,design:l.design,product:l.desc||l.category,qty:l.qty||1,purity:l.purity,routeName:l.route||Object.keys(SET.routes)[0],mode:'In-house',status:'Waiting Material',priority:o.priority,plannedEnd:l.due||o.dueDate})});
     b('[data-e]')&&(b('[data-e]').onclick=()=>{close();orderForm(o)});
     b('[data-st]')&&(b('[data-st]').onclick=()=>{close();openForm({title:`Change status · ${o.no}`,fields:[{k:'to',l:'New status',t:'sel',o:ORDER_ST,req:1,d:o.status},{k:'note',l:'Note / reason',t:'ta',w:4,req:1}],value:{},onSave:v=>{if(v.to==='Cancelled'&&!can('orders','approve')){toast('Only managers can cancel orders.',true);return false}return save('orders',{...o,status:v.to,history:[...(o.history||[]),{ts:nowISO(),by:ME.id,from:o.status,to:v.to,note:v.note}]},{action:'status',reason:v.note})}})});
@@ -1370,6 +1384,91 @@ function grnForm(p){
       const full=lines.every(l=>num(l.recd)>=num(l.qty)-0.0005);
       await save('pos',{...p,lines,status:full?'Received':'Partially Received',grn:[...(p.grn||[]),{date:today(),by:ME.id,vouchers:made,note:ov.querySelector('#gNote').value+(flags.length?' · PURITY MISMATCH: '+flags.join('; '):'')}]},{action:'grn'});
       if(flags.length)toast('Purity mismatch flagged: '+flags.join('; '),true);close()}finally{e.target.disabled=false}}}})}
+
+/* ============ VENDORS · BUYING · FACTORY ============ */
+/* Website order → Buying dept buys the watch + lab-grown diamond from vendors →
+   item goes to Factory (assessment returns the diamond spec) → buy that diamond →
+   Factory produces the final product → ready for Packing & Dispatch. */
+const VENDOR_KINDS=['Diamond','Metal','Watch & parts','Castings / findings','Factory','Other'];
+const VENDOR_TERMS=['Advance','On delivery','7 days','15 days','30 days','Custom'];
+const BUY_KINDS=['Watch / base item','Lab-grown diamond','CVD diamond','Moissanite','Metal','Castings / findings','Components','Other'];
+const BUY_ST=['Ordered','Received','Cancelled'];
+const BUY_UNITS=['pcs','ct','g','set','pair'];
+const BUY_CUR=['INR','USD'];
+const FAC_STAGE=['Assessment','Production'];
+const FAC_ST=['Sent','In progress','Received'];
+const DIA_SHAPES=['Round','Oval','Princess','Emerald','Cushion','Pear','Marquise','Radiant','Asscher','Heart','Baguette','Other'];
+const ordNo=id=>{const o=byId('orders',id);return o?o.no:(id||'')};
+const vendorOpt=kind=>()=>S.vendors.filter(v=>v.active!==false&&(!kind||v.kind===kind)).map(v=>[v.id,(v.no?v.no+' · ':'')+(v.name||'')]);
+const orderOpt=()=>S.orders.filter(o=>!['Delivered','Cancelled','Closed'].includes(o.status)).sort((a,b)=>(b.no||'').localeCompare(a.no||'')).map(o=>[o.id,(o.no||'')+(o.customerName?' · '+o.customerName:'')]);
+const buyAmt=r=>num(r.amount)||num(r.qty)*num(r.rate);
+
+/* ---------- Vendors (reusable supplier master) ---------- */
+function viewVendors(){
+  const rows=applyFil('vendors',S.vendors,'kind').sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  return phead('Vendors','Diamond, metal, watch and factory suppliers — used across Buying and Factory.',can('vendors','edit')?btn('+ New vendor','onclick="vendorForm()"','pri'):'')
+   +filterBar('vendors',VENDOR_KINDS)
+   +table([{l:'Code',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Vendor',h:r=>esc(r.name)},{l:'Type',h:r=>stPill(r.kind||'Other')},{l:'Contact',h:r=>esc([r.person,r.phone].filter(Boolean).join(' · ')||'—')},{l:'City',h:r=>esc(r.city||'—')},{l:'Terms',h:r=>esc(r.terms||'—')},{l:'Status',h:r=>stPill(r.active===false?'Inactive':'Active')}],
+     rows,{onClick:vendorForm,empty:'No vendors yet',emptyHint:'Add the diamond, metal, watch and factory suppliers you buy from.'})}
+function vendorForm(p){
+  openForm({title:p&&p.id?`Edit ${p.name||p.no}`:'New vendor',pro:1,value:p||{active:true,kind:'Diamond'},fields:[
+   {k:'h1',t:'hr',l:'Vendor',icon:ic('building')},
+   {k:'name',l:'Vendor / company name',req:1,w:2},{k:'kind',l:'Type',t:'sel',o:VENDOR_KINDS,req:1},{k:'active',l:'Active',t:'bool',d:true},
+   {k:'h2',t:'hr',l:'Contact',icon:ic('phone')},
+   {k:'person',l:'Contact person'},{k:'phone',l:'Phone'},{k:'email',l:'Email'},{k:'city',l:'City / location'},
+   {k:'h3',t:'hr',l:'Terms & rates',icon:ic('wallet')},
+   {k:'terms',l:'Payment terms',t:'sel',o:VENDOR_TERMS},{k:'rateCard',l:'Rate / price notes',t:'ta',w:4,hint:'e.g. Lab-grown 1ct DEF VS ≈ ₹14,000/ct · watch body ₹…'},
+   {k:'notes',l:'Notes',t:'ta',w:4}],
+   async onSave(v){await save('vendors',v)}})}
+
+/* ---------- Buying (purchases from vendors, linked to an order) ---------- */
+function viewBuying(){
+  const rows=applyFil('purchases',S.purchases).sort((a,b)=>(b.no||'').localeCompare(a.no||''));
+  const open=rows.filter(r=>r.status==='Ordered').length, recd=rows.filter(r=>r.status==='Received').length;
+  const kp=(v,l,c='')=>`<div class="card kpi ${c}"><span class="v">${v}</span><span class="l">${esc(l)}</span></div>`;
+  return phead('Buying','Each watch, diamond or metal you buy from a vendor — linked to the order it is for.',can('buying','edit')?btn('+ New purchase','onclick="buyForm()"','pri'):'')
+   +`<div class="grid g3" style="margin-bottom:12px">${kp(rows.length,'Purchases','gold')}${kp(open,'Still on order',open?'alert':'')}${kp(recd,'Received')}</div>`
+   +filterBar('purchases',BUY_ST)
+   +table([{l:'Ref',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Date',h:r=>fdate(r.date)},{l:'Vendor',h:r=>esc(nameOf('vendors',r.vendor))},{l:'For order',h:r=>r.order?`<span class="ref">${esc(ordNo(r.order))}</span>`:'<span class="note">Stock</span>'},{l:'What',h:r=>esc(r.buyKind||'')+(r.item?' · '+esc(r.item):'')},{l:'Qty',n:1,h:r=>fq(r.qty)+' '+esc(r.unit||'')},{l:'Amount',n:1,h:r=>fcur(buyAmt(r),r.currency||'INR')},{l:'Status',h:r=>stPill(r.status||'Ordered')}],
+     rows,{onClick:buyForm,empty:'No purchases yet',emptyHint:'Record each watch / diamond / metal you buy for an order.'})}
+function buyForm(p){
+  openForm({title:p&&p.id?`Edit ${p.no}`:'New purchase',pro:1,value:p||{date:today(),status:'Ordered',currency:'INR',unit:'pcs'},fields:[
+   {k:'h1',t:'hr',l:'What & who',icon:ic('box')},
+   {k:'order',l:'For which order',t:'ref',o:orderOpt,w:2,hint:'Leave blank if buying for stock'},{k:'vendor',l:'Vendor',t:'ref',o:vendorOpt(),req:1,w:2},
+   {k:'buyKind',l:'What are you buying',t:'sel',o:BUY_KINDS,req:1},{k:'item',l:'Item / spec',w:2,hint:'e.g. Rolex-style watch body · 1.5ct Oval lab-grown DEF VS'},{k:'status',l:'Status',t:'sel',o:BUY_ST,d:'Ordered'},
+   {k:'h2',t:'hr',l:'Quantity & cost',icon:ic('wallet')},
+   {k:'qty',l:'Quantity',t:'num',d:1},{k:'unit',l:'Unit',t:'sel',o:BUY_UNITS,d:'pcs'},{k:'rate',l:'Rate (per unit)',t:'num'},{k:'currency',l:'Currency',t:'sel',o:BUY_CUR,d:'INR'},
+   {k:'amount',l:'Total amount',calc:v=>num(v.amount)&&!num(v.rate)?num(v.amount):r2(num(v.qty)*num(v.rate)),hint:'Auto = qty × rate (override if needed)'},
+   {k:'h3',t:'hr',l:'Dates & proof',icon:ic('clipboard')},
+   {k:'expected',l:'Expected date',t:'date'},{k:'received',l:'Received date',t:'date'},
+   {k:'invoice',l:'Vendor invoice / bill',t:'file',accept:'image/*,application/pdf',max:5,btn:'Add bill'},
+   {k:'notes',l:'Notes',t:'ta',w:4}],
+   async onSave(v){if(num(v.rate))v.amount=r2(num(v.qty)*num(v.rate));await save('purchases',v)}})}
+
+/* ---------- Factory (send item → assessment returns diamond spec → production → final) ---------- */
+function viewFactory(){
+  const rows=applyFil('factory',S.factory).sort((a,b)=>(b.no||'').localeCompare(a.no||''));
+  const atFac=rows.filter(r=>r.status!=='Received').length;
+  const kp=(v,l,c='')=>`<div class="card kpi ${c}"><span class="v">${v}</span><span class="l">${esc(l)}</span></div>`;
+  return phead('Factory','Send the item to the factory. Assessment returns the diamond spec; production returns the final product.',can('factory','edit')?btn('+ New factory job','onclick="facForm()"','pri'):'')
+   +`<div class="grid g3" style="margin-bottom:12px">${kp(rows.length,'Factory jobs','gold')}${kp(atFac,'At factory now',atFac?'alert':'')}${kp(rows.filter(r=>r.status==='Received').length,'Completed')}</div>`
+   +filterBar('factory',FAC_ST)
+   +table([{l:'Ref',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Order',h:r=>`<span class="ref">${esc(ordNo(r.order))}</span>`},{l:'Factory',h:r=>esc(nameOf('vendors',r.factory))},{l:'Stage',h:r=>stPill(r.stage||'Assessment')},{l:'Sent',h:r=>fdate(r.sent)},{l:'Diamond spec',h:r=>facSpecShort(r)},{l:'Status',h:r=>stPill(r.status||'Sent')}],
+     rows,{onClick:facForm,empty:'No factory jobs yet',emptyHint:'Create a job when you hand an item to the factory.'})}
+function facSpecShort(r){const s=r.diaSpec||[];if(!s.length)return '—';return esc(s.map(x=>`${fq(x.qty)}×${x.size||'?'}${x.shape?' '+x.shape:''}`).join(', ')).slice(0,60)}
+function facForm(p){
+  openForm({title:p&&p.id?`Edit ${p.no}`:'New factory job',pro:1,wide:1,value:p||{sent:today(),stage:'Assessment',status:'Sent'},fields:[
+   {k:'h1',t:'hr',l:'Job',icon:ic('box')},
+   {k:'order',l:'Order',t:'ref',o:orderOpt,req:1,w:2},{k:'factory',l:'Factory',t:'ref',o:vendorOpt('Factory'),req:1,w:2,hint:'Add the factory under Vendors (type = Factory) first'},
+   {k:'stage',l:'Stage',t:'sel',o:FAC_STAGE,req:1},{k:'status',l:'Status',t:'sel',o:FAC_ST,d:'Sent'},
+   {k:'itemsSent',l:'Items sent to factory',w:2,hint:'e.g. Watch body + mount (for assessment) · Watch + 1.5ct diamond (for production)'},
+   {k:'h2',t:'hr',l:'Diamond spec (from assessment)',icon:ic('gem')},
+   {k:'diaSpec',l:'Diamonds the factory needs',t:'lines',cols:[{k:'qty',l:'Qty',t:'num',w:70},{k:'size',l:'Size / carat',w:110},{k:'shape',l:'Shape',t:'sel',o:DIA_SHAPES,w:120},{k:'note',l:'Note',w:160}]},
+   {k:'h3',t:'hr',l:'Dates & final product',icon:ic('clipboard')},
+   {k:'expected',l:'Expected back',t:'date'},{k:'received',l:'Received back',t:'date'},{k:'finalReceived',l:'Final product received',t:'bool'},
+   {k:'files',l:'Photos / documents',t:'file',accept:'image/*,video/*,application/pdf',max:8,btn:'Add files'},
+   {k:'qcNote',l:'QC / notes',t:'ta',w:4}],
+   async onSave(v){await save('factory',v)}})}
 
 /* ============ UNIQUE-PIECE INVENTORY (every piece is different) ============ */
 const PIECE_ST=['In stock','Reserved','Sold','With customer (approval)','Returned','Lost / written off'];
@@ -1962,7 +2061,7 @@ function setSizePref(s){PREF.set('size',s);applyPrefs();render()}
 function askPush(){if(!('Notification'in window)){toast('Notifications are not supported here.',true);return}Notification.requestPermission().then(p=>{toast(p==='granted'?'Notifications turned on ✓':'Not allowed');render()})}
 
 /* ============ RENDER & BOOT ============ */
-const VIEWS={dashboard:viewDashboard,chat:viewChat,prefs:viewSettings,crm:viewCRM,quotes:viewQuotes,orders:viewOrders,designs:viewDesigns,purchase:viewPurchase,inventory:viewInventory,production:viewProduction,karigars:viewKarigars,wastage:viewWastage,qc:viewQC,dispatch:viewDispatch,accounts:viewAccounts,hr:viewHR,reports:viewReports,masters:viewMasters,setup:viewSetup,audit:viewAudit};
+const VIEWS={dashboard:viewDashboard,chat:viewChat,prefs:viewSettings,crm:viewCRM,quotes:viewQuotes,orders:viewOrders,vendors:viewVendors,buying:viewBuying,factory:viewFactory,designs:viewDesigns,purchase:viewPurchase,inventory:viewInventory,production:viewProduction,karigars:viewKarigars,wastage:viewWastage,qc:viewQC,dispatch:viewDispatch,accounts:viewAccounts,hr:viewHR,reports:viewReports,masters:viewMasters,setup:viewSetup,audit:viewAudit};
 function render(){
   if(!TOKEN){renderLogin();return}
   if(!LOADED){return}

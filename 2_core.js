@@ -179,6 +179,7 @@ function defaultSettings(){return{
 /* ---------- roles & permissions ---------- */
 const MODS=[
   ['dashboard','Dashboard','Overview','dashboard'],['chat','Chat','Overview','chat'],['crm','CRM & Leads','Sales','crm'],['quotes','Quotations','Sales','quotes'],['orders','Orders','Sales','orders'],
+  ['vendors','Vendors','Make','building'],['buying','Buying','Make','purchase'],['factory','Factory','Make','production'],
   ['designs','Designs','Make','designs'],['purchase','Purchase','Make','purchase'],['inventory','Inventory','Make','inventory'],['production','Production','Make','production'],['karigars','Karigars','Make','karigars'],['wastage','Wastage & Recovery','Make','wastage'],['qc','Quality Control','Make','qc'],['dispatch','Packing & Dispatch','Make','dispatch'],
   ['accounts','Accounts','Money','accounts'],['hr','HR & Payroll','Money','hr'],['reports','Reports','Money','reports'],
   ['masters','Masters','Admin','masters'],['setup','Staff & Users','Admin','setup'],['audit','Audit Log','Admin','audit'],['prefs','Settings','Account','prefs']];
@@ -188,7 +189,7 @@ const ROLES={admin:'Super Admin',office:'Ivevar Office'};
 const OFFICE_MODS=MODS.filter(m=>!['setup','audit'].includes(m[0])).map(m=>m[0]);
 const TITLES=['CEO','Accountant','Sales','Courier','Helper','Custom'];
 const TITLE_LABEL={CEO:'CEO',Accountant:'Accountant',Sales:'Sales person',Courier:'Courier / dispatch',Helper:'Office helper',Custom:'Custom access'};
-const TITLE_MODS={CEO:OFFICE_MODS,Accountant:['dashboard','orders','purchase','inventory','accounts','hr','reports','masters','dispatch'],Sales:['dashboard','quotes','orders','inventory','dispatch'],Courier:['dashboard','orders','qc','dispatch','inventory'],Helper:['dashboard','orders','dispatch','inventory']};
+const TITLE_MODS={CEO:OFFICE_MODS,Accountant:['dashboard','orders','vendors','buying','purchase','inventory','accounts','hr','reports','masters','dispatch'],Sales:['dashboard','quotes','orders','inventory','dispatch'],Courier:['dashboard','orders','qc','dispatch','inventory'],Helper:['dashboard','orders','dispatch','inventory']};
 const TITLE_APPROVE={CEO:OFFICE_MODS,Accountant:['purchase','inventory','accounts','hr','reports','masters'],Sales:[],Courier:['dispatch'],Helper:[]};
 function effMods(u){return Array.isArray(u.modules)?u.modules.slice():[]}
 function roleLabel(u){if(!u)return '';if(u.role==='admin')return 'Super Admin';return (u.title&&TITLE_LABEL[u.title])||'Ivevar Office'}
@@ -226,7 +227,7 @@ let LANG='en';try{LANG=localStorage.getItem('erp_lang')||'en'}catch(e){}
 const T=s=>(I18N[LANG]&&I18N[LANG][s])||s;
 
 /* ---------- data layer: Cloudflare Worker API (D1 + R2) ---------- */
-const COLLS=['tasks','punch','messages','cash','leads','quotes','orders','designs','pos','vouchers','pieces','jobs','karigars','challans','wastage','qc','dispatches','invoices','receipts','bills','payments','expenses','customers','suppliers','employees','attendance'];
+const COLLS=['tasks','punch','messages','cash','leads','quotes','orders','designs','pos','vouchers','pieces','jobs','karigars','challans','wastage','qc','dispatches','invoices','receipts','bills','payments','expenses','customers','suppliers','employees','attendance','vendors','purchases','factory'];
 const S={};COLLS.forEach(c=>S[c]=[]);
 let SET=defaultSettings();
 let USERS=[];let SINCE=0;let LOADED=false;const DEMO=false;

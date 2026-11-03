@@ -74,6 +74,91 @@ function grnForm(p){
       await save('pos',{...p,lines,status:full?'Received':'Partially Received',grn:[...(p.grn||[]),{date:today(),by:ME.id,vouchers:made,note:ov.querySelector('#gNote').value+(flags.length?' · PURITY MISMATCH: '+flags.join('; '):'')}]},{action:'grn'});
       if(flags.length)toast('Purity mismatch flagged: '+flags.join('; '),true);close()}finally{e.target.disabled=false}}}})}
 
+/* ============ VENDORS · BUYING · FACTORY ============ */
+/* Website order → Buying dept buys the watch + lab-grown diamond from vendors →
+   item goes to Factory (assessment returns the diamond spec) → buy that diamond →
+   Factory produces the final product → ready for Packing & Dispatch. */
+const VENDOR_KINDS=['Diamond','Metal','Watch & parts','Castings / findings','Factory','Other'];
+const VENDOR_TERMS=['Advance','On delivery','7 days','15 days','30 days','Custom'];
+const BUY_KINDS=['Watch / base item','Lab-grown diamond','CVD diamond','Moissanite','Metal','Castings / findings','Components','Other'];
+const BUY_ST=['Ordered','Received','Cancelled'];
+const BUY_UNITS=['pcs','ct','g','set','pair'];
+const BUY_CUR=['INR','USD'];
+const FAC_STAGE=['Assessment','Production'];
+const FAC_ST=['Sent','In progress','Received'];
+const DIA_SHAPES=['Round','Oval','Princess','Emerald','Cushion','Pear','Marquise','Radiant','Asscher','Heart','Baguette','Other'];
+const ordNo=id=>{const o=byId('orders',id);return o?o.no:(id||'')};
+const vendorOpt=kind=>()=>S.vendors.filter(v=>v.active!==false&&(!kind||v.kind===kind)).map(v=>[v.id,(v.no?v.no+' · ':'')+(v.name||'')]);
+const orderOpt=()=>S.orders.filter(o=>!['Delivered','Cancelled','Closed'].includes(o.status)).sort((a,b)=>(b.no||'').localeCompare(a.no||'')).map(o=>[o.id,(o.no||'')+(o.customerName?' · '+o.customerName:'')]);
+const buyAmt=r=>num(r.amount)||num(r.qty)*num(r.rate);
+
+/* ---------- Vendors (reusable supplier master) ---------- */
+function viewVendors(){
+  const rows=applyFil('vendors',S.vendors,'kind').sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  return phead('Vendors','Diamond, metal, watch and factory suppliers — used across Buying and Factory.',can('vendors','edit')?btn('+ New vendor','onclick="vendorForm()"','pri'):'')
+   +filterBar('vendors',VENDOR_KINDS)
+   +table([{l:'Code',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Vendor',h:r=>esc(r.name)},{l:'Type',h:r=>stPill(r.kind||'Other')},{l:'Contact',h:r=>esc([r.person,r.phone].filter(Boolean).join(' · ')||'—')},{l:'City',h:r=>esc(r.city||'—')},{l:'Terms',h:r=>esc(r.terms||'—')},{l:'Status',h:r=>stPill(r.active===false?'Inactive':'Active')}],
+     rows,{onClick:vendorForm,empty:'No vendors yet',emptyHint:'Add the diamond, metal, watch and factory suppliers you buy from.'})}
+function vendorForm(p){
+  openForm({title:p&&p.id?`Edit ${p.name||p.no}`:'New vendor',pro:1,value:p||{active:true,kind:'Diamond'},fields:[
+   {k:'h1',t:'hr',l:'Vendor',icon:ic('building')},
+   {k:'name',l:'Vendor / company name',req:1,w:2},{k:'kind',l:'Type',t:'sel',o:VENDOR_KINDS,req:1},{k:'active',l:'Active',t:'bool',d:true},
+   {k:'h2',t:'hr',l:'Contact',icon:ic('phone')},
+   {k:'person',l:'Contact person'},{k:'phone',l:'Phone'},{k:'email',l:'Email'},{k:'city',l:'City / location'},
+   {k:'h3',t:'hr',l:'Terms & rates',icon:ic('wallet')},
+   {k:'terms',l:'Payment terms',t:'sel',o:VENDOR_TERMS},{k:'rateCard',l:'Rate / price notes',t:'ta',w:4,hint:'e.g. Lab-grown 1ct DEF VS ≈ ₹14,000/ct · watch body ₹…'},
+   {k:'notes',l:'Notes',t:'ta',w:4}],
+   async onSave(v){await save('vendors',v)}})}
+
+/* ---------- Buying (purchases from vendors, linked to an order) ---------- */
+function viewBuying(){
+  const rows=applyFil('purchases',S.purchases).sort((a,b)=>(b.no||'').localeCompare(a.no||''));
+  const open=rows.filter(r=>r.status==='Ordered').length, recd=rows.filter(r=>r.status==='Received').length;
+  const kp=(v,l,c='')=>`<div class="card kpi ${c}"><span class="v">${v}</span><span class="l">${esc(l)}</span></div>`;
+  return phead('Buying','Each watch, diamond or metal you buy from a vendor — linked to the order it is for.',can('buying','edit')?btn('+ New purchase','onclick="buyForm()"','pri'):'')
+   +`<div class="grid g3" style="margin-bottom:12px">${kp(rows.length,'Purchases','gold')}${kp(open,'Still on order',open?'alert':'')}${kp(recd,'Received')}</div>`
+   +filterBar('purchases',BUY_ST)
+   +table([{l:'Ref',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Date',h:r=>fdate(r.date)},{l:'Vendor',h:r=>esc(nameOf('vendors',r.vendor))},{l:'For order',h:r=>r.order?`<span class="ref">${esc(ordNo(r.order))}</span>`:'<span class="note">Stock</span>'},{l:'What',h:r=>esc(r.buyKind||'')+(r.item?' · '+esc(r.item):'')},{l:'Qty',n:1,h:r=>fq(r.qty)+' '+esc(r.unit||'')},{l:'Amount',n:1,h:r=>fcur(buyAmt(r),r.currency||'INR')},{l:'Status',h:r=>stPill(r.status||'Ordered')}],
+     rows,{onClick:buyForm,empty:'No purchases yet',emptyHint:'Record each watch / diamond / metal you buy for an order.'})}
+function buyForm(p){
+  openForm({title:p&&p.id?`Edit ${p.no}`:'New purchase',pro:1,value:p||{date:today(),status:'Ordered',currency:'INR',unit:'pcs'},fields:[
+   {k:'h1',t:'hr',l:'What & who',icon:ic('box')},
+   {k:'order',l:'For which order',t:'ref',o:orderOpt,w:2,hint:'Leave blank if buying for stock'},{k:'vendor',l:'Vendor',t:'ref',o:vendorOpt(),req:1,w:2},
+   {k:'buyKind',l:'What are you buying',t:'sel',o:BUY_KINDS,req:1},{k:'item',l:'Item / spec',w:2,hint:'e.g. Rolex-style watch body · 1.5ct Oval lab-grown DEF VS'},{k:'status',l:'Status',t:'sel',o:BUY_ST,d:'Ordered'},
+   {k:'h2',t:'hr',l:'Quantity & cost',icon:ic('wallet')},
+   {k:'qty',l:'Quantity',t:'num',d:1},{k:'unit',l:'Unit',t:'sel',o:BUY_UNITS,d:'pcs'},{k:'rate',l:'Rate (per unit)',t:'num'},{k:'currency',l:'Currency',t:'sel',o:BUY_CUR,d:'INR'},
+   {k:'amount',l:'Total amount',calc:v=>num(v.amount)&&!num(v.rate)?num(v.amount):r2(num(v.qty)*num(v.rate)),hint:'Auto = qty × rate (override if needed)'},
+   {k:'h3',t:'hr',l:'Dates & proof',icon:ic('clipboard')},
+   {k:'expected',l:'Expected date',t:'date'},{k:'received',l:'Received date',t:'date'},
+   {k:'invoice',l:'Vendor invoice / bill',t:'file',accept:'image/*,application/pdf',max:5,btn:'Add bill'},
+   {k:'notes',l:'Notes',t:'ta',w:4}],
+   async onSave(v){if(num(v.rate))v.amount=r2(num(v.qty)*num(v.rate));await save('purchases',v)}})}
+
+/* ---------- Factory (send item → assessment returns diamond spec → production → final) ---------- */
+function viewFactory(){
+  const rows=applyFil('factory',S.factory).sort((a,b)=>(b.no||'').localeCompare(a.no||''));
+  const atFac=rows.filter(r=>r.status!=='Received').length;
+  const kp=(v,l,c='')=>`<div class="card kpi ${c}"><span class="v">${v}</span><span class="l">${esc(l)}</span></div>`;
+  return phead('Factory','Send the item to the factory. Assessment returns the diamond spec; production returns the final product.',can('factory','edit')?btn('+ New factory job','onclick="facForm()"','pri'):'')
+   +`<div class="grid g3" style="margin-bottom:12px">${kp(rows.length,'Factory jobs','gold')}${kp(atFac,'At factory now',atFac?'alert':'')}${kp(rows.filter(r=>r.status==='Received').length,'Completed')}</div>`
+   +filterBar('factory',FAC_ST)
+   +table([{l:'Ref',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Order',h:r=>`<span class="ref">${esc(ordNo(r.order))}</span>`},{l:'Factory',h:r=>esc(nameOf('vendors',r.factory))},{l:'Stage',h:r=>stPill(r.stage||'Assessment')},{l:'Sent',h:r=>fdate(r.sent)},{l:'Diamond spec',h:r=>facSpecShort(r)},{l:'Status',h:r=>stPill(r.status||'Sent')}],
+     rows,{onClick:facForm,empty:'No factory jobs yet',emptyHint:'Create a job when you hand an item to the factory.'})}
+function facSpecShort(r){const s=r.diaSpec||[];if(!s.length)return '—';return esc(s.map(x=>`${fq(x.qty)}×${x.size||'?'}${x.shape?' '+x.shape:''}`).join(', ')).slice(0,60)}
+function facForm(p){
+  openForm({title:p&&p.id?`Edit ${p.no}`:'New factory job',pro:1,wide:1,value:p||{sent:today(),stage:'Assessment',status:'Sent'},fields:[
+   {k:'h1',t:'hr',l:'Job',icon:ic('box')},
+   {k:'order',l:'Order',t:'ref',o:orderOpt,req:1,w:2},{k:'factory',l:'Factory',t:'ref',o:vendorOpt('Factory'),req:1,w:2,hint:'Add the factory under Vendors (type = Factory) first'},
+   {k:'stage',l:'Stage',t:'sel',o:FAC_STAGE,req:1},{k:'status',l:'Status',t:'sel',o:FAC_ST,d:'Sent'},
+   {k:'itemsSent',l:'Items sent to factory',w:2,hint:'e.g. Watch body + mount (for assessment) · Watch + 1.5ct diamond (for production)'},
+   {k:'h2',t:'hr',l:'Diamond spec (from assessment)',icon:ic('gem')},
+   {k:'diaSpec',l:'Diamonds the factory needs',t:'lines',cols:[{k:'qty',l:'Qty',t:'num',w:70},{k:'size',l:'Size / carat',w:110},{k:'shape',l:'Shape',t:'sel',o:DIA_SHAPES,w:120},{k:'note',l:'Note',w:160}]},
+   {k:'h3',t:'hr',l:'Dates & final product',icon:ic('clipboard')},
+   {k:'expected',l:'Expected back',t:'date'},{k:'received',l:'Received back',t:'date'},{k:'finalReceived',l:'Final product received',t:'bool'},
+   {k:'files',l:'Photos / documents',t:'file',accept:'image/*,video/*,application/pdf',max:8,btn:'Add files'},
+   {k:'qcNote',l:'QC / notes',t:'ta',w:4}],
+   async onSave(v){await save('factory',v)}})}
+
 /* ============ UNIQUE-PIECE INVENTORY (every piece is different) ============ */
 const PIECE_ST=['In stock','Reserved','Sold','With customer (approval)','Returned','Lost / written off'];
 function pieceCard(p){const img=(p.photos||[])[0];const prof=pieceProfit(p);
