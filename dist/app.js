@@ -670,6 +670,7 @@ function orderForm(o){
   const val={...o,custName:o.customer?custName(o.customer):'',custCC:o.phoneCC||'+1',custPhone:o.phoneNum||'',custEmail:o.email||(cu0&&cu0.email)||'',custCountry:o.country||(cu0&&cu0.country)||'United States',addr1:o.addr1||'',addr2:o.addr2||'',city:o.city||'',state:o.state||'',zip:o.zip||''};
   if(val.custCountry==='USA'||val.custCountry==='US')val.custCountry='United States';if(val.custCountry==='UK')val.custCountry='United Kingdom';
   openForm({title:isNew?'New order':`Edit ${o.no}`,wide:1,value:val,fields:[
+    {k:'productFiles',l:'Product photo(s)',t:'file',accept:'image/*',max:15,btn:'Upload product photo',w:4},
     {k:'currency',l:'Currency',t:'cur',req:1,d:'USD',w:2},
     {k:'custName',l:'Customer full name',t:'text',list:()=>S.customers.map(c=>[c.name,c.name]),req:1,w:2,hint:'Type the name — a new customer is created automatically if not found'},
     {k:'orderIdDisplay',l:'Order ID (auto)',ro:1,calc:v=>isNew?nextOrderNo():o.no},
@@ -678,7 +679,6 @@ function orderForm(o){
     {k:'priority',l:'Priority',t:'sel',o:['Normal','High','Urgent']},{k:'status',l:'Status',t:'sel',o:ORDER_ST,ro:!isNew&&!can('orders','approve')},
     {k:'channel',l:'Sales channel',t:'sel',o:['ivevar.com','ivevar.us','ivevar.in','Etsy','Sales executive']},
     {k:'lines',l:'Items',t:'lines',cols:OL_COLS()},
-    {k:'productFiles',l:'Product photo(s)',t:'file',accept:'image/*',max:15,btn:'Upload product photo',w:4},
     {k:'hrP',l:'Pricing & profit',t:'hr'},
     {k:'saleValue',l:'Total order value ($)',t:'num',req:1,hint:'What the customer pays'},
     {k:'usdRate',l:'Exchange rate → INR',ro:1,calc:v=>{const c=v.currency||'USD';return c==='INR'?'1.00 (INR)':fxRate(c).toFixed(2)+' ₹ / '+c},hint:'Admin-set rate — locked for this order'},
