@@ -1,7 +1,7 @@
 <title>Ivevar Management</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Gujarati:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Gujarati:wght@400;600&display=swap">
 <style>
 /* Layout: fixed graphite rail of 18 modules + work surface; gold is used only for primary actions and fine-metal figures */
 :root{
@@ -9,7 +9,8 @@
   --accent:#e8820c; --accent-soft:#fdeedb; --accent-ink:#ffffff; --navy:#151b3d; --navy2:#232c57;
   --rail:#141a3a; --rail2:#1b2350; --rail-ink:#d7dbef; --rail-active:#e8820c; --rail-brand:#ffb44d;
   --good:#1d7447; --good-soft:#e2f3ea; --warn:#a35f00; --warn-soft:#fbefdc; --bad:#b0281f; --bad-soft:#fbe5e3; --info:#2458a6; --info-soft:#e4ecf8;
-  --f-ui:"Instrument Sans","Noto Sans Devanagari","Noto Sans Gujarati",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --pri:var(--accent); --pri-ink:var(--accent-ink);
+  --f-ui:"Inter","Instrument Sans","Noto Sans Devanagari","Noto Sans Gujarati",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-num:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
   --r:8px;
   color-scheme:light;
@@ -41,6 +42,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .nav a.on{background:var(--accent);color:var(--accent-ink);font-weight:600;box-shadow:0 4px 14px #0005}
 .nav a .ct{margin-left:auto;font-family:var(--f-num);font-size:11px;background:var(--surface2);border-radius:9px;padding:0 6px}
 .nav a .ct.hot{background:var(--bad);color:#fff}
+.nav a svg{width:18px;height:18px;flex:none;opacity:.9}
+.nav a.on svg{opacity:1}
+.navic{display:inline-flex;align-items:center;justify-content:center}
 .main{min-width:0;display:flex;flex-direction:column}
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
@@ -61,7 +65,7 @@ h3{font-size:13px;margin:0 0 8px;font-weight:600;color:var(--muted);text-transfo
 .phead .act{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:7px 12px;cursor:pointer;font-weight:550;font-size:13px;white-space:nowrap}
 .btn:hover{border-color:var(--muted)}
-.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:var(--pri-ink)}
 .btn.pri:hover{filter:brightness(1.08)}
 .btn.sm{padding:3px 9px;font-size:12px}
 .btn.dng{color:var(--bad)}
@@ -140,7 +144,8 @@ tbody tr.click:hover td{background:var(--surface2)}
 .form-pro{display:flex;flex-direction:column;gap:16px;padding:18px 20px}
 .fcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px 20px;box-shadow:0 1px 3px #0000000d}
 .fcard-h{display:flex;align-items:center;gap:11px;margin:0 0 15px;padding-bottom:13px;border-bottom:1px solid var(--line)}
-.fcard-ic{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--accent-soft);font-size:16px;flex:none}
+.fcard-ic{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--accent-soft);font-size:16px;flex:none;color:var(--accent)}
+.fcard-ic svg{width:18px;height:18px}
 .fcard-h h3{margin:0;font-size:15px;font-weight:650;letter-spacing:.01em;color:var(--ink)}
 .fpro .f{gap:5px}
 .fpro .f label{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.02em}
@@ -416,8 +421,10 @@ tbody tr.click:hover td{background:var(--surface2)}
 .swt input:checked+span{background:var(--accent)}
 .swt input:checked+span:before{transform:translateX(20px)}
 /* ======== THEMES (Settings → Appearance) ======== */
-/* Midnight — dark slate + amber */
-:root[data-theme="midnight"]{--bg:#0e131d;--surface:#161c29;--surface2:#1e2534;--ink:#e7e9f0;--muted:#99a1b4;--line:#2a3242;--accent:#f59e0b;--accent-soft:#3a2a12;--accent-ink:#1a1206;--navy:#0a0e16;--navy2:#141b2b;--rail:#0b0f18;--rail2:#141b2b;--rail-ink:#cdd3e4;--rail-brand:#f5b43f;--good:#37c489;--good-soft:#123024;--warn:#e0a84a;--warn-soft:#352a14;--bad:#f0685e;--bad-soft:#3a1c1a;--info:#6aa6ff;--info-soft:#17233a}
+/* Luxury Ivory — the recommended default: ivory surfaces, deep-ink headings, champagne accent, dark-ink primary buttons, deep-ink sidebar */
+:root[data-theme="ivory"]{--bg:#f7f5f0;--surface:#ffffff;--surface2:#f0ede7;--ink:#18242c;--muted:#657078;--line:#ddd5c9;--accent:#b08a4a;--accent-soft:#f2ebdc;--accent-ink:#ffffff;--pri:#18242c;--pri-ink:#ffffff;--navy:#18242c;--navy2:#26343d;--rail:#141d24;--rail2:#202d37;--rail-ink:#c8cfd4;--rail-active:#b08a4a;--rail-brand:#cba96a;--good:#276a57;--good-soft:#e3efea;--warn:#a76420;--warn-soft:#f6ead9;--bad:#b54747;--bad-soft:#f6e6e6;--info:#315e8a;--info-soft:#e4ebf3}
+/* Midnight Luxury — refined dark slate + champagne gold */
+:root[data-theme="midnight"]{--bg:#0e151b;--surface:#17222b;--surface2:#202d37;--ink:#f3f2ee;--muted:#b6c0c7;--line:#34434e;--accent:#d5b478;--accent-soft:#2e2a1e;--accent-ink:#1a1206;--pri:#d5b478;--pri-ink:#17120a;--navy:#0a0e16;--navy2:#141b2b;--rail:#0b1218;--rail2:#141f28;--rail-ink:#c6d0d7;--rail-brand:#d5b478;--good:#37c489;--good-soft:#123024;--warn:#e0a84a;--warn-soft:#352a14;--bad:#f0685e;--bad-soft:#3a1c1a;--info:#6aa6ff;--info-soft:#17233a}
 /* Royal — deep purple + gold */
 :root[data-theme="royal"]{--bg:#15111f;--surface:#1f1830;--surface2:#271e3b;--ink:#efeafb;--muted:#a99fc0;--line:#352a4d;--accent:#e0b84a;--accent-soft:#33280f;--accent-ink:#1a1206;--navy:#120d1d;--navy2:#241a38;--rail:#120c1f;--rail2:#241834;--rail-ink:#d8cfeb;--rail-brand:#e8c766;--good:#49c98f;--good-soft:#16321f;--warn:#e0a84a;--warn-soft:#352a14;--bad:#f0685e;--bad-soft:#3a1c22;--info:#9d8bff;--info-soft:#221a3a}
 /* Emerald — deep green + mint */

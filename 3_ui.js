@@ -118,8 +118,8 @@ let ROUTE='dashboard',ROUTE_ARG=null,TAB={};
 function navCounts(){let a=alerts();if(ME.role!=='admin'){const C={orders:'orders',crm:'leads',production:'jobs',qc:'qc',quotes:'quotes',inventory:'vouchers',wastage:'wastage',karigars:'challans',dispatch:'dispatches'};a=a.filter(x=>{const r=x.id&&byId(C[x.mod],x.id);return r&&(r.createdBy===ME.id||(x.mod==='orders'&&orderSeller(r)===ME.id))})}const c={};a.forEach(x=>c[x.mod]=(c[x.mod]||0)+1);try{const cu=chatUnread();if(cu)c.chat=cu}catch(e){}return c}
 function renderNav(){
   const c=navCounts();let g='';let html='';
-  MODS.forEach(([k,l,grp])=>{if(!can(k))return;const sep=(g&&grp!==g)?' gtop':'';g=grp;
-    html+=`<a href="#${k}" class="${ROUTE===k?'on':''}${sep}">${esc(T(l))}${c[k]?`<span class="ct ${k!=='dashboard'?'hot':''}">${c[k]}</span>`:''}</a>`});
+  MODS.forEach(([k,l,grp,icon])=>{if(!can(k))return;const sep=(g&&grp!==g)?' gtop':'';g=grp;
+    html+=`<a href="#${k}" class="${ROUTE===k?'on':''}${sep}"><span class="navic">${ic(icon||'dashboard')}</span>${esc(T(l))}${c[k]?`<span class="ct ${k!=='dashboard'?'hot':''}">${c[k]}</span>`:''}</a>`});
   $('#nav').innerHTML=html;const bl=$('#blogo');if(bl&&bl.getAttribute('src')!==LOGO)bl.src=LOGO;
   const rf=$('#railfoot');if(rf)rf.innerHTML=`<div class="rf-user"><b>${esc(ME.name||'')}</b><div class="rf-sub">${esc(roleLabel(ME))}${SET.company&&SET.company.name?' · '+esc(SET.company.name):''}</div></div><select class="rf-lang" aria-label="Language" onchange="LANG=this.value;try{localStorage.setItem('erp_lang',LANG)}catch(e){};render()"><option value="en" ${LANG==='en'?'selected':''}>English</option><option value="hi" ${LANG==='hi'?'selected':''}>हिंदी</option><option value="gu" ${LANG==='gu'?'selected':''}>ગુજરાતી</option></select><div class="rf-links"><a onclick="pwForm()">Change password</a> · <a onclick="logout()">Logout</a></div>`}
 function go(mod,arg){ROUTE_ARG=arg||null;if(location.hash!=='#'+mod)location.hash=mod;else render()}

@@ -23,8 +23,39 @@ function toast(msg,err){const t=document.createElement('div');t.className='toast
 
 /* ---------- personal preferences: theme, text size, notifications ---------- */
 const PREF={get:(k,d)=>{try{const v=localStorage.getItem('erp_'+k);return v==null?d:v}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem('erp_'+k,v)}catch(e){}}};
-const THEMES=[['cream','Cream','#e8820c','#fffdf9'],['sand','Sand','#b07a1e','#fffdf6'],['rose','Rose','#c2487a','#fffafb'],['sunset','Sunset','#e2572e','#fffaf7'],['slate','Slate','#3b6ea5','#ffffff'],['ocean','Ocean','#0e7490','#ffffff'],['emerald','Emerald','#2ecc8f','#12201b'],['forest','Forest','#4caf50','#121d14'],['midnight','Midnight','#f59e0b','#161c29'],['royal','Royal','#e0b84a','#1f1830'],['graphite','Graphite','#5b8def','#191b1f'],['crimson','Crimson','#e23b4e','#211417']];
-function applyPrefs(){try{const th=PREF.get('theme','cream');if(th&&th!=='cream')document.documentElement.dataset.theme=th;else delete document.documentElement.dataset.theme;const sz=PREF.get('size','normal');document.documentElement.style.zoom=sz==='large'?'1.1':sz==='larger'?'1.22':''}catch(e){}}
+const THEMES=[['ivory','Luxury Ivory','#b08a4a','#ffffff'],['cream','Cream','#e8820c','#fffdf9'],['sand','Sand','#b07a1e','#fffdf6'],['rose','Rose','#c2487a','#fffafb'],['sunset','Sunset','#e2572e','#fffaf7'],['slate','Slate','#3b6ea5','#ffffff'],['ocean','Ocean','#0e7490','#ffffff'],['emerald','Emerald','#2ecc8f','#12201b'],['forest','Forest','#4caf50','#121d14'],['midnight','Midnight','#d5b478','#17222b'],['royal','Royal','#e0b84a','#1f1830'],['graphite','Graphite','#5b8def','#191b1f'],['crimson','Crimson','#e23b4e','#211417']];
+/* Luxury Ivory is the recommended default; any theme a user has explicitly chosen is preserved (stored under erp_theme). */
+function applyPrefs(){try{const th=PREF.get('theme','ivory');document.documentElement.dataset.theme=th;const sz=PREF.get('size','normal');document.documentElement.style.zoom=sz==='large'?'1.1':sz==='larger'?'1.22':''}catch(e){}}
+/* ---------- professional outline icon set (inline SVG, inherits currentColor) ---------- */
+const ICONS={
+ dashboard:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+ chat:'<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/>',
+ crm:'<path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
+ quotes:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+ orders:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+ designs:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+ purchase:'<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/>',
+ inventory:'<path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/>',
+ production:'<path d="M14.7 6.3a4 4 0 0 0-5.6 5.6L3 18.1V21h2.9l6.2-6.2a4 4 0 0 0 5.6-5.6l-2.7 2.7-2.1-2.1z"/>',
+ karigars:'<path d="m15 7 3-3 3 3-3 3M9 17l-3 3-3-3 3-3M9 7 7 5M17 15l2 2M14 10 10 14"/><circle cx="12" cy="12" r="1"/>',
+ wastage:'<path d="M7 19H5a2 2 0 0 1-1.7-3L6 11"/><polyline points="6 15 6 11 10 11"/><path d="M17 5l3 5"/><path d="M12 19h7a2 2 0 0 0 1.7-3L18 11"/><polyline points="18 7 18 11 14 11"/>',
+ qc:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>',
+ dispatch:'<rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
+ accounts:'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>',
+ hr:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h3M15 12h3M6.5 16h7"/>',
+ reports:'<line x1="6" y1="20" x2="6" y2="15"/><line x1="12" y1="20" x2="12" y2="9"/><line x1="18" y1="20" x2="18" y2="4"/>',
+ masters:'<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="2" y1="14" x2="6" y2="14"/><line x1="10" y1="8" x2="14" y2="8"/><line x1="18" y1="16" x2="22" y2="16"/>',
+ setup:'<circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><circle cx="19" cy="15.5" r="2.5"/><path d="M19 12.5v1M19 17.5v1M21.8 14l-.9.5M17.1 16.5l-.9.5M21.8 17l-.9-.5M17.1 14.5l-.9-.5"/>',
+ audit:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4M12 15.5v.5"/>',
+ prefs:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
+ receipt:'<path d="M5 3v18l2-1.2 2 1.2 2-1.2 2 1.2 2-1.2 2 1.2V3l-2 1.2L13 3l-2 1.2L9 3 7 4.2z"/><line x1="8.5" y1="8.5" x2="15.5" y2="8.5"/><line x1="8.5" y1="12" x2="15.5" y2="12"/>',
+ gem:'<path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/>',
+ coin:'<circle cx="12" cy="12" r="9"/><path d="M14.8 9.3A2.6 2.6 0 0 0 12 8c-1.7 0-2.6 1-2.6 2s.9 1.8 2.6 2 2.6.9 2.6 2-1 2-2.6 2a2.6 2.6 0 0 1-2.8-1.3"/><path d="M12 6.4v11.2"/>',
+ card:'<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/>',
+ box:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/>',
+ note:'<path d="M4 4h16v12l-4 4H4z"/><path d="M16 20v-4h4"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="12" y2="13"/>'};
+const ic=(name,cls)=>`<svg class="icn ${cls||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]||''}</svg>`;
 applyPrefs();
 let _ac;function beep(){try{_ac=_ac||new (window.AudioContext||window.webkitAudioContext)();const o=_ac.createOscillator(),g=_ac.createGain();o.connect(g);g.connect(_ac.destination);o.frequency.value=880;g.gain.value=0.05;o.start();o.frequency.exponentialRampToValueAtTime(1320,_ac.currentTime+0.09);g.gain.exponentialRampToValueAtTime(0.0001,_ac.currentTime+0.25);o.stop(_ac.currentTime+0.27)}catch(e){}}
 function notifyNewMessages(list){try{
@@ -95,10 +126,10 @@ function defaultSettings(){return{
 
 /* ---------- roles & permissions ---------- */
 const MODS=[
-  ['dashboard','Dashboard','Overview'],['chat','Chat','Overview'],['crm','CRM & Leads','Sales'],['quotes','Quotations','Sales'],['orders','Orders','Sales'],
-  ['designs','Designs','Make'],['purchase','Purchase','Make'],['inventory','Inventory','Make'],['production','Production','Make'],['karigars','Karigars','Make'],['wastage','Wastage & Recovery','Make'],['qc','Quality Control','Make'],['dispatch','Packing & Dispatch','Make'],
-  ['accounts','Accounts','Money'],['hr','HR & Payroll','Money'],['reports','Reports','Money'],
-  ['masters','Masters','Admin'],['setup','Staff & Users','Admin'],['audit','Audit Log','Admin'],['prefs','Settings','Account']];
+  ['dashboard','Dashboard','Overview','dashboard'],['chat','Chat','Overview','chat'],['crm','CRM & Leads','Sales','crm'],['quotes','Quotations','Sales','quotes'],['orders','Orders','Sales','orders'],
+  ['designs','Designs','Make','designs'],['purchase','Purchase','Make','purchase'],['inventory','Inventory','Make','inventory'],['production','Production','Make','production'],['karigars','Karigars','Make','karigars'],['wastage','Wastage & Recovery','Make','wastage'],['qc','Quality Control','Make','qc'],['dispatch','Packing & Dispatch','Make','dispatch'],
+  ['accounts','Accounts','Money','accounts'],['hr','HR & Payroll','Money','hr'],['reports','Reports','Money','reports'],
+  ['masters','Masters','Admin','masters'],['setup','Staff & Users','Admin','setup'],['audit','Audit Log','Admin','audit'],['prefs','Settings','Account','prefs']];
 const LV={none:0,view:1,edit:2,approve:3};
 const ROLES={admin:'Super Admin',office:'Ivevar Office'};
 /* job-title presets for Ivevar Office users (mirrors the server) */
