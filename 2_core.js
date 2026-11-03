@@ -169,6 +169,7 @@ function defaultSettings(){return{
   defects:['Porosity','Loose stone','Missing stone','Size off','Weight short','Poor polish','Plating defect','Wrong purity','Scratch / dent','Other'],
   expenseCats:['Purchase / stock','Wages (in-house)','Rent','Electricity','Courier / shipping','Packaging','Marketing / ads','Software','Office expense','Travel','Tea / food','Bank charges','Owner withdrawal','Other'],
   cashAccounts:['Cash','Bank'],
+  bankAccounts:[{name:'Cash',type:'Cash',currency:'INR'},{name:'Bank',type:'Bank',currency:'INR'}],
   couriers:['FedEx','DHL','UPS','BVC','Sequel','Blue Dart','India Post','Hand delivery'],
   discLimitPct:5,
   commissionPct:25,

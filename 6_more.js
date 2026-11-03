@@ -187,7 +187,15 @@ function accForm(c,x){openForm({title:x&&x.id?`Edit ${x.no}`:'New '+({invoices:'
   if(x&&x.id&&!can('accounts','approve')){toast('Only an approver can edit posted accounting entries.',true);return false}
   await save(c,v,{reason:x&&x.id?'edit':''})}})}
 const INCOME_CATS=['Sales (ivevar.com)','Sales (ivevar.in)','Sales (Etsy)','Sales (other)','Customer advance','Opening balance','Other income'];
-const cashAccts=()=>(SET.cashAccounts||['Cash','Bank']).filter(a=>a!=='UPI'||S.cash.some(e=>e.account==='UPI'||e.to==='UPI'));
+/* ---- Bank & cash accounts (user-managed, Vyapar-style: many banks + cash) ---- */
+const ACCT_CURS=['INR','USD','AUD','GBP','EUR','CAD','AED'];
+const BANK_ACCTS=()=>(Array.isArray(SET.bankAccounts)&&SET.bankAccounts.length?SET.bankAccounts:(SET.cashAccounts||['Cash','Bank']).map(n=>({name:n,type:/cash/i.test(n)?'Cash':'Bank',currency:'INR'})));
+const cashAccts=()=>BANK_ACCTS().map(a=>a.name);
+const acctOf=n=>BANK_ACCTS().find(a=>a.name===n)||{name:n,type:'Bank',currency:'INR'};
+const acctCur=n=>acctOf(n).currency||'INR';
+const acctBal=n=>curSym(acctCur(n))+' '+num(cashBal(n)).toLocaleString('en-IN',{maximumFractionDigits:0});
+/* total balance grouped by currency, e.g. "₹ 4,50,000 · $ 12,000" */
+function balByCur(){const g={};BANK_ACCTS().forEach(a=>{const c=a.currency||'INR';g[c]=(g[c]||0)+cashBal(a.name)});return Object.keys(g).map(c=>curSym(c)+' '+num(g[c]).toLocaleString('en-IN',{maximumFractionDigits:0})).join('  ·  ')}
 function cashSigned(e,acct){if(e.type==='Transfer')return acct?(e.to===acct?num(e.amount):e.account===acct?-num(e.amount):0):0;const v=num(e.amount);return e.type==='Income'?v:-v}
 function cashBal(acct){return S.cash.filter(e=>!acct||e.account===acct||e.to===acct).reduce((t,e)=>t+cashSigned(e,acct),0)}
 let CASH_M=today().slice(0,7),CASH_A='';
@@ -209,8 +217,8 @@ function viewAccounts(){
   const tab=TAB.acc||'book';const inM=e=>(e.date||'').startsWith(CASH_M);
   const mIn=S.cash.filter(e=>inM(e)&&e.type==='Income'&&e.category!=='Opening balance').reduce((t,e)=>t+num(e.amount),0),mOut=S.cash.filter(e=>inM(e)&&e.type==='Expense').reduce((t,e)=>t+num(e.amount),0);
   const kp=(v,l,c='')=>`<div class="card kpi ${c}"><span class="v">${v}</span><span class="l">${esc(l)}</span></div>`;
-  const tiles=`<div class="grid g3" style="margin-bottom:14px">${kp(money(cashBal()),'Total balance (all accounts)','gold')}${cashAccts().slice(0,2).map(a=>kp(money(cashBal(a)),a+' balance',cashBal(a)<-0.5?'alert':'')).join('')}</div>
-   <div class="grid g3" style="margin-bottom:14px">${kp('<span style="color:var(--good)">'+money(mIn)+'</span>','Money in · '+CASH_M)}${kp('<span style="color:var(--bad)">'+money(mOut)+'</span>','Money out · '+CASH_M)}${kp(money(mIn-mOut),'Net this month',mIn-mOut<0?'alert':'')}</div>`;
+  const tiles=`<div class="grid g4" style="margin-bottom:12px">${kp(balByCur(),'Total balance','gold')}${kp('<span style="color:var(--good)">'+money(mIn)+'</span>','Money in · '+CASH_M)}${kp('<span style="color:var(--bad)">'+money(mOut)+'</span>','Money out · '+CASH_M)}${kp(money(mIn-mOut),'Net · '+CASH_M,mIn-mOut<0?'alert':'')}</div>
+   <div class="grid g4" style="margin-bottom:14px">${BANK_ACCTS().map(a=>`<div class="card kpi ${cashBal(a.name)<-0.5?'alert':''}"><span class="v" style="font-size:15px">${acctBal(a.name)}</span><span class="l">${esc(a.name)} · ${esc(a.type)}</span></div>`).join('')}</div>`;
   const tools=`<div class="tools"><input type="month" value="${CASH_M}" onchange="CASH_M=this.value;render()"><select onchange="CASH_A=this.value;render()"><option value="">All accounts</option>${cashAccts().map(a=>`<option ${CASH_A===a?'selected':''}>${esc(a)}</option>`).join('')}</select>${filterBar('cash').replace('<div class="tools">','').replace(/<\/div>$/,'')}</div>`;
   let body='';
   if(tab==='book'){
@@ -224,8 +232,43 @@ function viewAccounts(){
     body=`<div class="grid g2"><div>${table([{l:'Date',h:r=>fdate(r.date)},{l:'Category',k:'category'},{l:ty==='Income'?'From':'To',k:'party'},{l:'Account',k:'account'},{l:'Amount',n:1,h:r=>money(r.amount)}],rows,{onClick:cashView,empty:'Nothing this month'})}</div><div class="card"><h2>By category · ${CASH_M}</h2>${Object.keys(byCat).length?hbars(Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({l,v,f:money}))):'<div class="empty">—</div>'}</div></div>`}
   else{const months=[...new Set(S.cash.map(e=>(e.date||'').slice(0,7)).filter(Boolean))].sort().reverse().slice(0,12);
     body=table([{l:'Month',k:'m'},{l:'Money in',n:1,h:r=>`<span style="color:var(--good)">${money(r.i)}</span>`},{l:'Money out',n:1,h:r=>`<span style="color:var(--bad)">${money(r.o)}</span>`},{l:'Net',n:1,h:r=>`<b style="color:${r.i-r.o<0?'var(--bad)':'var(--good)'}">${money(r.i-r.o)}</b>`}],months.map(m=>{const x=S.cash.filter(e=>(e.date||'').startsWith(m));return{m,i:x.filter(e=>e.type==='Income'&&e.category!=='Opening balance').reduce((t,e)=>t+num(e.amount),0),o:x.filter(e=>e.type==='Expense').reduce((t,e)=>t+num(e.amount),0)}}),{empty:'No entries yet'})+`<div class="note" style="margin-top:8px">Opening balance entries are not counted as income here.</div>`}
-  const acts=can('accounts','edit')?btn('⇄ Transfer',`onclick="cashForm('Transfer')"`)+btn('− Money out',`onclick="cashForm('Expense')"`)+btn('+ Money in',`onclick="cashForm('Income')"`,'pri'):'';
+  const acts=can('accounts','edit')?btn(ic('building')+' Accounts','onclick="accountsManager()"')+btn('⇄ Transfer',`onclick="cashForm('Transfer')"`)+btn('− Money out',`onclick="cashForm('Expense')"`)+btn('+ Money in',`onclick="cashForm('Income')"`,'pri'):'';
   return phead('Accounts','Money in, money out and your cash / bank balance.',acts)+tiles+tabsHTML('acc',[['book','Cash book'],['in','Income'],['out','Expenses'],['sum','Monthly summary']],tab)+(tab!=='sum'?tools:'')+body}
+
+/* ---- Accounts manager: add/edit/remove bank & cash accounts ---- */
+function accountsManager(){
+  const list=BANK_ACCTS();
+  const rows=list.map(a=>`<tr><td><b>${esc(a.name)}</b>${a.bank||a.number?`<div class="note">${esc([a.bank,a.number].filter(Boolean).join(' · '))}</div>`:''}</td><td>${stPill(a.type||'Bank')}</td><td>${esc(a.currency||'INR')}</td><td class="num"><b>${acctBal(a.name)}</b></td><td>${can('accounts','edit')?`<button class="btn sm" data-edit="${esc(a.name)}">Edit</button> <button class="btn sm" data-del="${esc(a.name)}">Remove</button>`:''}</td></tr>`).join('');
+  modal({title:'Bank & cash accounts',sub:'Add every bank and cash account you use — balances, money in / out and transfers calculate automatically.',wide:1,
+    body:`<div class="tw"><table><thead><tr><th>Account</th><th>Type</th><th>Currency</th><th class="num">Balance</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="note">No accounts yet — add your banks and cash.</td></tr>'}</tbody></table></div>`,
+    foot:(can('accounts','edit')?`<button class="btn pri" data-add>+ Add account</button>`:'')+`<button class="btn" data-close>Close</button>`,
+    onMount(ov,close){
+      const add=ov.querySelector('[data-add]');add&&(add.onclick=()=>{close();accountForm()});
+      ov.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{const n=b.getAttribute('data-edit');close();accountForm(acctOf(n))});
+      ov.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const n=b.getAttribute('data-del');close();delAccount(n)});
+    }})}
+function accountForm(a){
+  const isNew=!a;const prev=a?a.name:'';
+  openForm({title:isNew?'Add account':`Edit ${a.name}`,pro:1,value:a||{type:'Bank',currency:'INR'},fields:[
+   {k:'h1',t:'hr',l:'Account',icon:ic('building')},
+   {k:'name',l:'Account name',req:1,w:2,ro:!isNew,hint:isNew?'e.g. HDFC Bank · US Bank · Cash in hand':'Name is used on every entry and cannot be changed'},
+   {k:'type',l:'Type',t:'sel',o:['Bank','Cash','Wallet'],req:1,d:'Bank'},{k:'currency',l:'Currency',t:'sel',o:ACCT_CURS,req:1,d:'INR'},
+   {k:'h2',t:'hr',l:'Details (optional)',icon:ic('clipboard')},
+   {k:'bank',l:'Bank name'},{k:'number',l:'Account number'},
+   {k:'opening',l:'Opening balance',t:'num',hint:isNew?'Balance in this account today (optional)':'Add/adjust later with a money-in / money-out entry'}],
+   async onSave(v){
+     const list=BANK_ACCTS().map(x=>({...x}));
+     const rec={name:isNew?String(v.name||'').trim():prev,type:v.type||'Bank',currency:v.currency||'INR',bank:(v.bank||'').trim(),number:(v.number||'').trim()};
+     if(!rec.name){toast('Enter an account name.',true);return false}
+     if(isNew&&list.some(x=>(x.name||'').toLowerCase()===rec.name.toLowerCase())){toast('An account with that name already exists.',true);return false}
+     const i=list.findIndex(x=>x.name===prev);if(i>=0)list[i]=rec;else list.push(rec);
+     await saveSettings({bankAccounts:list,cashAccounts:list.map(x=>x.name)},isNew?'add account':'edit account');
+     if(isNew&&num(v.opening)>0){try{await save('cash',{type:'Income',category:'Opening balance',account:rec.name,amount:num(v.opening),date:today(),note:'Opening balance'},{silent:1})}catch(e){}}
+     accountsManager();
+   }})}
+function delAccount(name){
+  if(S.cash.some(e=>e.account===name||e.to===name)){toast('This account has entries — it can’t be removed. Rename or keep it.',true);accountsManager();return}
+  confirmBox('Remove account',`Remove “${esc(name)}”? This only removes the empty account.`,async()=>{const list=BANK_ACCTS().filter(x=>x.name!==name);await saveSettings({bankAccounts:list,cashAccounts:list.map(x=>x.name)},'remove account');accountsManager()},'Remove')}
 
 /* ============ HR & PAYROLL (brief §3.15) ============ */
 let ATT_DATE=today(),PAY_MONTH=today().slice(0,7);
@@ -271,7 +314,7 @@ function viewReports(){
 function showReport(i){const r=window._R[i];modal({title:r[0],wide:1,body:table(r[2].map(c=>({l:c.l,h:x=>{const v=c.x?c.x(x):x[c.k];return esc(typeof v==='number'?fq(v):v??'')}})),r[3]())})}
 
 /* ============ MASTERS VIEW ============ */
-const LIST_KEYS=[['categories','Product categories'],['materials','Materials'],['departments','Departments / processes'],['locations','Stock locations'],['leadSources','Lead sources'],['lostReasons','Lost reasons'],['qcChecks','QC checklist'],['defects','Defect codes'],['expenseCats','Expense categories'],['cashAccounts','Money accounts (Cash, Bank…)'],['couriers','Couriers']];
+const LIST_KEYS=[['categories','Product categories'],['materials','Materials'],['departments','Departments / processes'],['locations','Stock locations'],['leadSources','Lead sources'],['lostReasons','Lost reasons'],['qcChecks','QC checklist'],['defects','Defect codes'],['expenseCats','Expense categories'],['couriers','Couriers']];
 function viewMasters(){
   if(!['customers','suppliers','employees'].includes(TAB.mas))TAB.mas='customers';
   const tab=TAB.mas;let body='';
@@ -393,6 +436,7 @@ function viewSettings(){
    </div>
    ${admin?`<div class="card setcard"><div class="cap2">${ic('building')} Office</div>
     <div class="setrow link" onclick="companyForm()"><div><b>Company profile</b><div class="note">Name &amp; address on order slips, commission %</div></div><span class="chev">›</span></div>
+    <div class="setrow link" onclick="accountsManager()"><div><b>${ic('building')} Bank &amp; cash accounts</b><div class="note">Add your banks and cash accounts — balances &amp; money in/out calculate automatically</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="fxForm()"><div><b>${ic('swap')} Currency rates</b><div class="note">Set USD, AUD, GBP… → ₹ (locked onto each new order)</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="jewelRatesForm()"><div><b>${ic('gem')} Jewellery rates</b><div class="note">Gold / silver / platinum / diamond rates + labour for the quotation price calculator</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="go('setup')"><div><b>Staff &amp; users</b><div class="note">Add team members and set their permissions</div></div><span class="chev">›</span></div>
