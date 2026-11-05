@@ -1663,12 +1663,47 @@ const SHK_SRC=['Google','Instagram','Facebook','LinkedIn','WhatsApp','Website','
 const SHK_ST=['New','Contacted','Interested','Forwarded','Negotiating','Converted','Not interested','No WhatsApp'];
 const staffOpt=()=>USERS.filter(u=>u.active!==false).map(u=>[u.id,u.name+(u.phone?' · '+u.phone:'')]);
 const staffPhone=id=>{const u=USERS.find(x=>x.id===id);return u?(u.phone||''):''};
+/* ---- Daily auto-send: status strip + "Run now" (same engine the cron uses) ---- */
+function shikariSendPanel(){
+  const today=new Date().toISOString().slice(0,10);
+  const sentToday=(SET.shikariSentDate===today)?(num(SET.shikariSentToday)||0):0;
+  const limit=num(SET.shikariDaily)||500;
+  const newCnt=S.shikari.filter(r=>(!r.status||r.status==='New')&&String(r.phone||r.whatsapp||'').replace(/[^0-9]/g,'').length>=8).length;
+  const waOk=!!(SET.waToken&&SET.waPhoneId);
+  const tplOk=!!(SET.waTemplateName||(Array.isArray(SET.shikariDepts)&&SET.shikariDepts.some(d=>d&&d.waTemplate)));
+  const auto=SET.shikariAuto!==false;
+  const pct=limit?Math.min(100,Math.round(sentToday/limit*100)):0;
+  return `<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div><b>${ic('smartphone')} Daily WhatsApp auto-send</b>
+        <div class="note" style="margin-top:2px">Aaj bheje: <b>${sentToday}</b> / ${limit} &middot; Baaki New leads: <b>${newCnt}</b> &middot; ${auto?'<span class="pill good">Auto ON</span>':'<span class="pill warn">Auto OFF</span>'}${SET.shikariLastRun?` &middot; last run ${fdt(SET.shikariLastRun)}`:''}</div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span class="pill ${waOk?'good':'warn'}">${waOk?'WhatsApp connected':'WhatsApp not connected'}</span>
+        <span class="pill ${tplOk?'good':'warn'}">${tplOk?'Template set':'Template not set'}</span>
+        ${btn('&#9654; Run now','onclick="shikariRunNow()"','pri')}
+      </div>
+    </div>
+    <div style="height:6px;background:rgba(128,128,128,.2);border-radius:4px;margin-top:8px;overflow:hidden"><div style="height:100%;width:${pct}%;background:#16a34a"></div></div>
+  </div>`;
+}
+async function shikariRunNow(){
+  if(!(SET.waToken&&SET.waPhoneId)){toast('Pehle WhatsApp (Meta) connect karo — Settings me.',true);return}
+  if(!(SET.waTemplateName||(Array.isArray(SET.shikariDepts)&&SET.shikariDepts.some(d=>d&&d.waTemplate)))){toast('Pehle Meta-approved template ka naam daalo — Campaign setup me.',true);shikariCampaignForm();return}
+  toast('WhatsApp bhej raha hoon…');
+  try{
+    const r=await api('/api/shikari/run',{});
+    if(!r.sent&&r.reason){toast('Rukа: '+r.reason,true)}
+    else{toast(`Bheja: ${r.sent} ✓${r.noWa?` · No WhatsApp: ${r.noWa}`:''}${r.failed?` · Fail: ${r.failed}`:''}`)}
+    await sync();scheduleRender();
+  }catch(e){toast(e.message,true)}
+}
 function viewShikari(){
   const rows=applyFil('shikari',S.shikari).sort((a,b)=>(b.no||'').localeCompare(a.no||''));
   const kp=(v,l,c='')=>`<div class="card kpi ${c}"><span class="v">${v}</span><span class="l">${esc(l)}</span></div>`;
   const nw=rows.filter(r=>(r.status||'New')==='New').length,conv=rows.filter(r=>r.status==='Converted').length;
   return phead('Shikari','Buyers &amp; wholesalers dhoondho aur interested leads ko sales team ko WhatsApp forward karo. Auto-find + bulk WhatsApp aage add hoga.',can('shikari','edit')?btn(ic('globe')+' Find on Google Maps','onclick="shikariFindForm()"','pri')+btn(ic('mail')+' Campaign','onclick="shikariCampaignForm()"')+btn(ic('clipboard')+' Import CSV','onclick="shikariImportForm()"')+btn(ic('smartphone')+' Sales team','onclick="shikariSalesForm()"')+btn('+ Add prospect','onclick="shikariForm()"'):'')
    +`<div class="grid g3" style="margin-bottom:12px">${kp(rows.length,'Prospects','gold')}${kp(nw,'New',nw?'alert':'')}${kp(conv,'Converted')}</div>`
+   +(can('shikari','edit')?shikariSendPanel():'')
    +(can('shikari','edit')?shikariSearchPanel():'')
    +filterBar('shikari',SHK_ST)
    +table([{l:'Code',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Business',h:r=>`<b>${esc(r.business||'')}</b>${r.contactName?`<div class="note">${esc(r.contactName)}</div>`:''}`},{l:'Type',h:r=>stPill(r.kind||'Buyer')},{l:'Source',h:r=>esc(r.source||'—')},{l:'Contact',h:r=>esc([r.phone,r.email].filter(Boolean).join(' · ')||'—')},{l:'Location',h:r=>esc(r.location||'—')},{l:'Assigned',h:r=>esc(r.assignedTo?userName(r.assignedTo):'—')},{l:'Status',h:r=>stPill(r.status||'New')},{l:'',h:r=>can('shikari','edit')?`<button class="btn sm" onclick="event.stopPropagation();shikariWhatsApp('${r.id}')" title="WhatsApp to assigned staff">${ic('smartphone')}</button> <button class="btn sm pri" onclick="event.stopPropagation();shikariForward('${r.id}')" title="Forward to sales team (round-robin)">→ Sales</button>`:''}],
@@ -1680,7 +1715,7 @@ function shikariForm(p){
    {k:'h2',t:'hr',l:'Contact',icon:ic('phone')},
    {k:'contactName',l:'Contact person'},{k:'phone',l:'Phone / WhatsApp',hint:'Country code ke saath, e.g. +1…'},{k:'email',l:'Email'},{k:'handle',l:'Website / social handle',w:2},{k:'location',l:'City / country'},
    {k:'h3',t:'hr',l:'Source & assignment',icon:ic('globe')},
-   {k:'source',l:'Found on',t:'sel',o:SHK_SRC,add:'source'},{k:'interest',l:'Interested in',w:2,hint:'e.g. loose diamonds, tennis chains, bridal sets'},{k:'assignedTo',l:'Assign to staff',t:'sel',o:staffOpt},
+   {k:'source',l:'Found on',t:'sel',o:SHK_SRC,add:'source'},{k:'interest',l:'Interested in',w:2,hint:'e.g. loose diamonds, tennis chains, bridal sets'},{k:'assignedTo',l:'Assign to staff',t:'sel',o:staffOpt},{k:'dept',l:'Department (auto-send template)',t:'sel',o:shikariDepts().map(d=>d.name),hint:'Optional — iss dept ka template use hoga'},
    {k:'notes',l:'Notes',t:'ta',w:4}],
    async onSave(v){await save('shikari',v)}})}
 function shkLead(p){const L=(k,v)=>v?`${k}: ${v}\n`:'';return L('Business',p.business)+L('Type',p.kind)+L('Contact',p.contactName)+L('Phone',p.phone)+L('Email',p.email)+L('Web/Social',p.handle)+L('Location',p.location)+L('Source',p.source)+L('Interested in',p.interest)+L('Notes',p.notes)}
@@ -1796,25 +1831,36 @@ function parseLeadsCSV(text){
 const shikariDepts=()=>Array.isArray(SET.shikariDepts)?SET.shikariDepts:[];
 function shikariCampaignForm(){
   const depts=shikariDepts();
-  const rows=depts.map((d,i)=>`<tr><td><b>${esc(d.name||'')}</b></td><td>${d.template?esc(d.template.slice(0,55))+(d.template.length>55?'…':''):'<span class="note">no template</span>'}</td><td>${(d.pdf&&d.pdf.url)?`<a href="${esc(d.pdf.url)}" target="_blank" rel="noopener">PDF</a>`:'<span class="note">—</span>'}</td><td>${can('shikari','edit')?`<button class="btn sm" data-edit="${i}">Edit</button> <button class="btn sm" data-del="${i}">Remove</button>`:''}</td></tr>`).join('');
+  const rows=depts.map((d,i)=>`<tr><td><b>${esc(d.name||'')}</b></td><td>${d.waTemplate?`<code>${esc(d.waTemplate)}</code>`:(d.template?'<span class="note">text only</span>':'<span class="note">—</span>')}</td><td>${(d.pdf&&d.pdf.url)?`<a href="${esc(d.pdf.url)}" target="_blank" rel="noopener">PDF</a>`:'<span class="note">—</span>'}</td><td>${can('shikari','edit')?`<button class="btn sm" data-edit="${i}">Edit</button> <button class="btn sm" data-del="${i}">Remove</button>`:''}</td></tr>`).join('');
   modal({title:'Shikari — Campaign setup',sub:'Har department ka WhatsApp template + PDF banao aur daily send limit set karo. WhatsApp API (Meta) connect hote hi auto-send chalu.',wide:1,
-   body:`<div class="form" style="margin-bottom:12px"><div class="f w2"><label>Daily send limit (messages/day)</label><input type="number" id="shkDaily" value="${esc(num(SET.shikariDaily)||500)}"></div><div class="f w2"><label>WhatsApp API (Meta)</label><div style="padding-top:6px"><span class="pill ${SET.waToken?'good':'warn'}">${SET.waToken?'Connected':'Not connected yet'}</span></div></div></div>
-     <h3>Departments &amp; templates</h3><div class="tw"><table><thead><tr><th>Department</th><th>Template</th><th>PDF</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="note">Abhi koi department nahi — "+ Add department" se banao.</td></tr>'}</tbody></table></div>`,
-   foot:(can('shikari','edit')?`<button class="btn pri" data-add>+ Add department</button><button class="btn" data-save>Save limit</button>`:'')+`<button class="btn" data-close>Close</button>`,
+   body:`<div class="form" style="margin-bottom:12px">
+       <div class="f w2"><label>Daily send limit (messages/day)</label><input type="number" id="shkDaily" value="${esc(num(SET.shikariDaily)||500)}"></div>
+       <div class="f w2"><label>Auto-send</label><div style="padding-top:8px"><label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="shkAuto" ${SET.shikariAuto!==false?'checked':''}> Rozana apne aap bheje</label></div></div>
+       <div class="f w2"><label>Meta-approved template name</label><input type="text" id="shkTpl" value="${esc(SET.waTemplateName||'')}" placeholder="e.g. ivevar_intro"></div>
+       <div class="f w2"><label>Template language</label><input type="text" id="shkLang" value="${esc(SET.waTemplateLang||'en_US')}" placeholder="en_US"></div>
+       <div class="f w4"><label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="shkVar" ${SET.waTemplateHasName?'checked':''}> Template me business ka naam {{1}} aata hai</label>
+         <div class="note" style="margin-top:4px">Naye number ko pehla message bhejne ke liye Meta-approved template zaroori hai. Approval (1-3 din) ke baad uska naam yahan daalo — tabhi auto-send chalu hoga. <span class="pill ${SET.waToken?'good':'warn'}">${SET.waToken?'WhatsApp connected':'WhatsApp not connected'}</span></div></div>
+     </div>
+     <h3>Departments &amp; templates</h3><div class="note" style="margin-bottom:6px">Har department ka alag Meta template naam set kar sakte ho (optional). Khaali chhodo to upar wala global template sabke liye use hoga.</div><div class="tw"><table><thead><tr><th>Department</th><th>Meta template</th><th>PDF</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="note">Abhi koi department nahi — "+ Add department" se banao.</td></tr>'}</tbody></table></div>`,
+   foot:(can('shikari','edit')?`<button class="btn pri" data-add>+ Add department</button><button class="btn" data-save>Save</button>`:'')+`<button class="btn" data-close>Close</button>`,
    onMount(ov,close){
      const add=ov.querySelector('[data-add]');add&&(add.onclick=()=>{close();shikariDeptForm()});
      ov.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{const i=+b.getAttribute('data-edit');close();shikariDeptForm(shikariDepts()[i],i)});
      ov.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{const i=+b.getAttribute('data-del');const l=shikariDepts().slice();l.splice(i,1);await saveSettings({shikariDepts:l},'shikari dept');shikariCampaignForm()});
-     const sv=ov.querySelector('[data-save]');sv&&(sv.onclick=async()=>{await saveSettings({shikariDaily:num(ov.querySelector('#shkDaily').value)||500},'shikari daily limit');toast('Saved ✓')});
+     const sv=ov.querySelector('[data-save]');sv&&(sv.onclick=async()=>{await saveSettings({shikariDaily:num(ov.querySelector('#shkDaily').value)||500,shikariAuto:ov.querySelector('#shkAuto').checked,waTemplateName:(ov.querySelector('#shkTpl').value||'').trim(),waTemplateLang:(ov.querySelector('#shkLang').value||'en_US').trim(),waTemplateHasName:ov.querySelector('#shkVar').checked},'shikari campaign');toast('Saved ✓')});
    }})}
 function shikariDeptForm(d,idx){
   openForm({title:d?`Edit ${d.name||'department'}`:'New department',pro:1,wide:1,value:d?{...d,pdf:d.pdf?[d.pdf]:[]}:{},fields:[
    {k:'h1',t:'hr',l:'Department / category',icon:ic('box')},
    {k:'name',l:'Department name',req:1,w:2,hint:'e.g. Rings · Loose Diamonds · Tennis Chains · Bridal'},
-   {k:'h2',t:'hr',l:'WhatsApp message template',icon:ic('smartphone')},
-   {k:'template',l:'Message',t:'ta',w:4,req:1,hint:'{business} aur {location} apne aap fill honge. (Meta approval ke baad hi send hoga.)'},
+   {k:'h2',t:'hr',l:'Meta-approved template (auto-send)',icon:ic('smartphone')},
+   {k:'waTemplate',l:'Meta template name',w:2,hint:'Is dept ka approved template naam. Khaali = global template use hoga.'},
+   {k:'waLang',l:'Language',w:1,d:'en_US',hint:'e.g. en_US'},
+   {k:'waVar',l:'Business naam {{1}} aata hai',t:'bool'},
+   {k:'h3',t:'hr',l:'Message text (reference / approval ke liye)',icon:ic('mail')},
+   {k:'template',l:'Message',t:'ta',w:4,hint:'Yeh woh text hai jo aap Meta ko approval ke liye submit karoge. {business} aur {location} placeholders.'},
    {k:'pdf',l:'Catalog / price PDF',t:'file',accept:'application/pdf',max:1,btn:'Upload PDF'}],
-   async onSave(v){const l=shikariDepts().slice();const rec={name:(v.name||'').trim(),template:v.template||'',pdf:(Array.isArray(v.pdf)?v.pdf[0]:v.pdf)||null};if(idx!=null&&idx>=0)l[idx]=rec;else l.push(rec);await saveSettings({shikariDepts:l},d?'edit dept':'add dept');shikariCampaignForm()}})}
+   async onSave(v){const l=shikariDepts().slice();const rec={name:(v.name||'').trim(),waTemplate:(v.waTemplate||'').trim(),waLang:(v.waLang||'en_US').trim(),waVar:!!v.waVar,template:v.template||'',pdf:(Array.isArray(v.pdf)?v.pdf[0]:v.pdf)||null};if(idx!=null&&idx>=0)l[idx]=rec;else l.push(rec);await saveSettings({shikariDepts:l},d?'edit dept':'add dept');shikariCampaignForm()}})}
 
 /* ============ SALES DASHBOARD (staff) ============ */
 let SD_P='month',DASH_CUR='USD';

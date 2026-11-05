@@ -170,6 +170,71 @@ async function handleWaEvent(env, settings, bd) {
     await env.DB.prepare(`INSERT INTO config(k,v,updated_at) VALUES('settings',?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v, updated_at=excluded.updated_at`).bind(JSON.stringify(next), Date.now()).run();
   }
 }
+/* ---- Shikari daily auto-send: picks New leads up to the daily limit and sends the approved Meta template ---- */
+const SHK_MAX_PER_RUN = 120;            // safety cap per invocation (Worker time budget)
+const SHK_NOWA_CODES = [131026, 131047, 131000, 131021, 131049]; // undeliverable → "No WhatsApp"
+function shikariTemplatePayload(settings, lead) {
+  // per-department Meta template name overrides the global one
+  const depts = Array.isArray(settings.shikariDepts) ? settings.shikariDepts : [];
+  const d = lead.dept ? depts.find(x => x && x.name === lead.dept) : null;
+  const name = (d && d.waTemplate) || settings.waTemplateName || '';
+  const lang = (d && d.waLang) || settings.waTemplateLang || 'en_US';
+  if (!name) return null;
+  const tpl = { name, language: { code: lang } };
+  const hasVar = (d && d.waVar != null) ? d.waVar : settings.waTemplateHasName;
+  if (hasVar) tpl.components = [{ type: 'body', parameters: [{ type: 'text', text: String(lead.business || 'there').slice(0, 60) }] }];
+  return { type: 'template', template: tpl };
+}
+async function shikariSendBatch(env, settings, maxCount) {
+  const out = { sent: 0, failed: 0, noWa: 0, skipped: 0, remaining: 0, reason: '' };
+  if (!settings || !settings.waToken || !settings.waPhoneId) { out.reason = 'WhatsApp not connected'; return out; }
+  const depts = Array.isArray(settings.shikariDepts) ? settings.shikariDepts : [];
+  if (!settings.waTemplateName && !depts.some(d => d && d.waTemplate)) { out.reason = 'No approved Meta template set'; return out; }
+  const today = new Date().toISOString().slice(0, 10);
+  const sentToday = settings.shikariSentDate === today ? (Number(settings.shikariSentToday) || 0) : 0;
+  const limit = Number(settings.shikariDaily) || 500;
+  const room = limit - sentToday;
+  if (room <= 0) { out.reason = 'Daily limit reached'; out.remaining = 0; return out; }
+  const batch = Math.min(room, Number(maxCount) || room, SHK_MAX_PER_RUN);
+  const rows = await env.DB.prepare(`SELECT id, body FROM docs WHERE coll='shikari' AND deleted=0`).all();
+  const leads = (rows.results || []).map(r => { try { return { id: r.id, b: JSON.parse(r.body) }; } catch (e) { return null; } }).filter(Boolean)
+    .filter(x => (!x.b.status || x.b.status === 'New') && String(x.b.phone || x.b.whatsapp || '').replace(/[^0-9]/g, '').length >= 8)
+    .sort((a, b) => String(a.b.no || '').localeCompare(String(b.b.no || '')))
+    .slice(0, batch);
+  if (!leads.length) { out.reason = sentToday > 0 ? 'No new leads left' : 'No new leads'; out.remaining = room; return out; }
+  const sys = { id: 'system', name: 'WhatsApp', role: 'admin', active: true };
+  let idx = 0;
+  const worker = async () => {
+    while (idx < leads.length) {
+      const d = leads[idx++];
+      const payload = shikariTemplatePayload(settings, d.b);
+      if (!payload) { out.skipped++; continue; }
+      const res = await waSend(settings, d.b.phone || d.b.whatsapp, payload);
+      if (res.ok) {
+        const mid = res.data && res.data.messages && res.data.messages[0] && res.data.messages[0].id;
+        await handleSave(env, sys, settings, { coll: 'shikari', doc: { ...d.b, id: d.id, status: 'Contacted', sentAt: new Date().toISOString(), waMsgId: mid || '' }, action: 'wa auto-send' }, true);
+        out.sent++;
+      } else {
+        const code = Number((res.data && res.data.error && res.data.error.code) || 0);
+        if (SHK_NOWA_CODES.includes(code)) {
+          await handleSave(env, sys, settings, { coll: 'shikari', doc: { ...d.b, id: d.id, status: 'No WhatsApp' }, action: 'wa auto-send undeliverable' }, true);
+          out.noWa++;
+        } else {
+          await handleSave(env, sys, settings, { coll: 'shikari', doc: { ...d.b, id: d.id, lastError: (res.data && res.data.error && res.data.error.message) || res.error || ('HTTP ' + res.status) }, action: 'wa send error' }, true);
+          out.failed++;
+        }
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(6, leads.length) }, worker));
+  out.remaining = room - out.sent;
+  // persist today's running counter (merge onto the freshest settings to avoid clobbering concurrent writes)
+  const fresh = (await getSettings(env)) || settings;
+  const base = fresh.shikariSentDate === today ? (Number(fresh.shikariSentToday) || 0) : 0;
+  const next = { ...fresh, shikariSentDate: today, shikariSentToday: base + out.sent, shikariLastRun: Date.now() };
+  await env.DB.prepare(`INSERT INTO config(k,v,updated_at) VALUES('settings',?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v, updated_at=excluded.updated_at`).bind(JSON.stringify(next), Date.now()).run();
+  return out;
+}
 function permsOf(settings) { return (settings && settings.perms) || defaultPerms(); }
 function can(user, settings, mod, lvl = 'view') {
   if (!user || !user.active) return false;
@@ -743,6 +808,13 @@ async function route(req, env, ctx) {
     const res = await waSend(settings, b.to, payload);
     return json({ ok: res.ok, status: res.status, data: res.data, error: res.error });
   }
+  if (p === '/api/shikari/run' && method === 'POST') {
+    // manual "Run now" — send a batch of New leads right away (same engine the daily cron uses)
+    if (!can(user, settings, 'shikari', 'edit')) return err('You cannot use Shikari.', 403);
+    const b = await body().catch(() => ({}));
+    const res = await shikariSendBatch(env, settings, num(b.max) || 0);
+    return json(res);
+  }
   if (p === '/api/settings' && method === 'POST') {
     if (!can(user, settings, 'setup', 'approve') && !can(user, settings, 'masters', 'edit')) return err('You cannot change settings.', 403);
     const b = await body(); const next = b.settings || {};
@@ -813,11 +885,13 @@ export default {
     try { return await route(req, env, ctx); }
     catch (e) { console.error(e && e.stack || e); return err('Server error: ' + (e && e.message || e), 500); }
   },
-  // daily morning cron: auto-refresh live FX + crypto rates (unless the user turned auto off)
+  // cron: (1) auto-refresh live FX + crypto rates, (2) Shikari daily auto-send batch
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
       try { const s = await getSettings(env); if (!s || s.ratesAuto !== false) await fetchLiveRates(env, true); }
       catch (e) { console.error('rates cron', e && e.stack || e); }
+      try { const s = await getSettings(env); if (s && s.shikariAuto !== false) { const r = await shikariSendBatch(env, s, 0); console.log('shikari cron', JSON.stringify(r)); } }
+      catch (e) { console.error('shikari cron', e && e.stack || e); }
     })());
   }
 };
