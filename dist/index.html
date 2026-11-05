@@ -1667,7 +1667,7 @@ function viewShikari(){
   const rows=applyFil('shikari',S.shikari).sort((a,b)=>(b.no||'').localeCompare(a.no||''));
   const kp=(v,l,c='')=>`<div class="card kpi ${c}"><span class="v">${v}</span><span class="l">${esc(l)}</span></div>`;
   const nw=rows.filter(r=>(r.status||'New')==='New').length,conv=rows.filter(r=>r.status==='Converted').length;
-  return phead('Shikari','Buyers &amp; wholesalers dhoondho aur interested leads ko sales team ko WhatsApp forward karo. Auto-find + bulk WhatsApp aage add hoga.',can('shikari','edit')?btn(ic('globe')+' Find on Google Maps','onclick="shikariFindForm()"','pri')+btn(ic('clipboard')+' Import CSV','onclick="shikariImportForm()"')+btn(ic('smartphone')+' Sales team','onclick="shikariSalesForm()"')+btn('+ Add prospect','onclick="shikariForm()"'):'')
+  return phead('Shikari','Buyers &amp; wholesalers dhoondho aur interested leads ko sales team ko WhatsApp forward karo. Auto-find + bulk WhatsApp aage add hoga.',can('shikari','edit')?btn(ic('globe')+' Find on Google Maps','onclick="shikariFindForm()"','pri')+btn(ic('mail')+' Campaign','onclick="shikariCampaignForm()"')+btn(ic('clipboard')+' Import CSV','onclick="shikariImportForm()"')+btn(ic('smartphone')+' Sales team','onclick="shikariSalesForm()"')+btn('+ Add prospect','onclick="shikariForm()"'):'')
    +`<div class="grid g3" style="margin-bottom:12px">${kp(rows.length,'Prospects','gold')}${kp(nw,'New',nw?'alert':'')}${kp(conv,'Converted')}</div>`
    +(can('shikari','edit')?shikariSearchPanel():'')
    +filterBar('shikari',SHK_ST)
@@ -1791,6 +1791,30 @@ function parseLeadsCSV(text){
   }
   return out;
 }
+
+/* ---- Campaign setup: per-department WhatsApp template + PDF, daily send limit ---- */
+const shikariDepts=()=>Array.isArray(SET.shikariDepts)?SET.shikariDepts:[];
+function shikariCampaignForm(){
+  const depts=shikariDepts();
+  const rows=depts.map((d,i)=>`<tr><td><b>${esc(d.name||'')}</b></td><td>${d.template?esc(d.template.slice(0,55))+(d.template.length>55?'…':''):'<span class="note">no template</span>'}</td><td>${(d.pdf&&d.pdf.url)?`<a href="${esc(d.pdf.url)}" target="_blank" rel="noopener">PDF</a>`:'<span class="note">—</span>'}</td><td>${can('shikari','edit')?`<button class="btn sm" data-edit="${i}">Edit</button> <button class="btn sm" data-del="${i}">Remove</button>`:''}</td></tr>`).join('');
+  modal({title:'Shikari — Campaign setup',sub:'Har department ka WhatsApp template + PDF banao aur daily send limit set karo. WhatsApp API (Meta) connect hote hi auto-send chalu.',wide:1,
+   body:`<div class="form" style="margin-bottom:12px"><div class="f w2"><label>Daily send limit (messages/day)</label><input type="number" id="shkDaily" value="${esc(num(SET.shikariDaily)||500)}"></div><div class="f w2"><label>WhatsApp API (Meta)</label><div style="padding-top:6px"><span class="pill ${SET.waToken?'good':'warn'}">${SET.waToken?'Connected':'Not connected yet'}</span></div></div></div>
+     <h3>Departments &amp; templates</h3><div class="tw"><table><thead><tr><th>Department</th><th>Template</th><th>PDF</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="note">Abhi koi department nahi — "+ Add department" se banao.</td></tr>'}</tbody></table></div>`,
+   foot:(can('shikari','edit')?`<button class="btn pri" data-add>+ Add department</button><button class="btn" data-save>Save limit</button>`:'')+`<button class="btn" data-close>Close</button>`,
+   onMount(ov,close){
+     const add=ov.querySelector('[data-add]');add&&(add.onclick=()=>{close();shikariDeptForm()});
+     ov.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{const i=+b.getAttribute('data-edit');close();shikariDeptForm(shikariDepts()[i],i)});
+     ov.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{const i=+b.getAttribute('data-del');const l=shikariDepts().slice();l.splice(i,1);await saveSettings({shikariDepts:l},'shikari dept');shikariCampaignForm()});
+     const sv=ov.querySelector('[data-save]');sv&&(sv.onclick=async()=>{await saveSettings({shikariDaily:num(ov.querySelector('#shkDaily').value)||500},'shikari daily limit');toast('Saved ✓')});
+   }})}
+function shikariDeptForm(d,idx){
+  openForm({title:d?`Edit ${d.name||'department'}`:'New department',pro:1,wide:1,value:d?{...d,pdf:d.pdf?[d.pdf]:[]}:{},fields:[
+   {k:'h1',t:'hr',l:'Department / category',icon:ic('box')},
+   {k:'name',l:'Department name',req:1,w:2,hint:'e.g. Rings · Loose Diamonds · Tennis Chains · Bridal'},
+   {k:'h2',t:'hr',l:'WhatsApp message template',icon:ic('smartphone')},
+   {k:'template',l:'Message',t:'ta',w:4,req:1,hint:'{business} aur {location} apne aap fill honge. (Meta approval ke baad hi send hoga.)'},
+   {k:'pdf',l:'Catalog / price PDF',t:'file',accept:'application/pdf',max:1,btn:'Upload PDF'}],
+   async onSave(v){const l=shikariDepts().slice();const rec={name:(v.name||'').trim(),template:v.template||'',pdf:(Array.isArray(v.pdf)?v.pdf[0]:v.pdf)||null};if(idx!=null&&idx>=0)l[idx]=rec;else l.push(rec);await saveSettings({shikariDepts:l},d?'edit dept':'add dept');shikariCampaignForm()}})}
 
 /* ============ SALES DASHBOARD (staff) ============ */
 let SD_P='month',DASH_CUR='USD';
