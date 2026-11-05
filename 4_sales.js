@@ -449,6 +449,40 @@ function orderDetail(o){
       const issues=[pend?`${pend} item(s) not fully dispatched`:'',notInv?'no invoice raised':'',due>0.5?`${money(due)} still unpaid`:''].filter(Boolean);
       close();askReason('Close order '+o.no,issues.length?'Checks failed: '+issues.join('; ')+'. Reason for closing anyway:':'All checks passed. Closing note:',r=>save('orders',{...o,status:'Closed',closedAt:nowISO(),history:[...(o.history||[]),{ts:nowISO(),by:ME.id,from:o.status,to:'Closed',note:r}]},{action:'close',reason:r}),{required:!!issues.length})})}})}
 
+/* ============ SHIKARI — find buyers/wholesalers & WhatsApp them to staff ============ */
+const SHK_KINDS=['Buyer','Wholesaler','Retailer','Distributor','Jeweller','Reseller','Other'];
+const SHK_SRC=['Google','Instagram','Facebook','LinkedIn','WhatsApp','Website','Marketplace','Referral','Other'];
+const SHK_ST=['New','Contacted','Interested','Negotiating','Converted','Not interested'];
+const staffOpt=()=>USERS.filter(u=>u.active!==false).map(u=>[u.id,u.name+(u.phone?' · '+u.phone:'')]);
+const staffPhone=id=>{const u=USERS.find(x=>x.id===id);return u?(u.phone||''):''};
+function viewShikari(){
+  const rows=applyFil('shikari',S.shikari).sort((a,b)=>(b.no||'').localeCompare(a.no||''));
+  const kp=(v,l,c='')=>`<div class="card kpi ${c}"><span class="v">${v}</span><span class="l">${esc(l)}</span></div>`;
+  const nw=rows.filter(r=>(r.status||'New')==='New').length,conv=rows.filter(r=>r.status==='Converted').length;
+  return phead('Shikari','Buyers &amp; wholesalers dhoondho (Google, social media, marketplaces) aur details apne staff ko WhatsApp karo. Auto-find aage add hoga.',can('shikari','edit')?btn('+ Add prospect','onclick="shikariForm()"','pri'):'')
+   +`<div class="grid g3" style="margin-bottom:12px">${kp(rows.length,'Prospects','gold')}${kp(nw,'New',nw?'alert':'')}${kp(conv,'Converted')}</div>`
+   +filterBar('shikari',SHK_ST)
+   +table([{l:'Code',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Business',h:r=>`<b>${esc(r.business||'')}</b>${r.contactName?`<div class="note">${esc(r.contactName)}</div>`:''}`},{l:'Type',h:r=>stPill(r.kind||'Buyer')},{l:'Source',h:r=>esc(r.source||'—')},{l:'Contact',h:r=>esc([r.phone,r.email].filter(Boolean).join(' · ')||'—')},{l:'Location',h:r=>esc(r.location||'—')},{l:'Assigned',h:r=>esc(r.assignedTo?userName(r.assignedTo):'—')},{l:'Status',h:r=>stPill(r.status||'New')},{l:'',h:r=>can('shikari','edit')?`<button class="btn sm" onclick="event.stopPropagation();shikariWhatsApp('${r.id}')">${ic('smartphone')} WhatsApp</button>`:''}],
+     rows,{onClick:shikariForm,empty:'No prospects yet',emptyHint:'Buyers/wholesalers add karo jo aapko mile — ya aage auto-find se apne aap aayenge.'})}
+function shikariForm(p){
+  openForm({title:p&&p.id?`Edit ${p.business||p.no}`:'New prospect',pro:1,value:p||{kind:'Wholesaler',source:'Instagram',status:'New'},fields:[
+   {k:'h1',t:'hr',l:'Prospect',icon:ic('building')},
+   {k:'business',l:'Business / name',req:1,w:2},{k:'kind',l:'Type',t:'sel',o:SHK_KINDS,add:'type',req:1},{k:'status',l:'Status',t:'sel',o:SHK_ST,d:'New'},
+   {k:'h2',t:'hr',l:'Contact',icon:ic('phone')},
+   {k:'contactName',l:'Contact person'},{k:'phone',l:'Phone / WhatsApp',hint:'Country code ke saath, e.g. +1…'},{k:'email',l:'Email'},{k:'handle',l:'Website / social handle',w:2},{k:'location',l:'City / country'},
+   {k:'h3',t:'hr',l:'Source & assignment',icon:ic('globe')},
+   {k:'source',l:'Found on',t:'sel',o:SHK_SRC,add:'source'},{k:'interest',l:'Interested in',w:2,hint:'e.g. loose diamonds, tennis chains, bridal sets'},{k:'assignedTo',l:'Assign to staff',t:'sel',o:staffOpt},
+   {k:'notes',l:'Notes',t:'ta',w:4}],
+   async onSave(v){await save('shikari',v)}})}
+function shikariWhatsApp(id){
+  const p=byId('shikari',id);if(!p)return;
+  const phone=(staffPhone(p.assignedTo)||'').replace(/[^0-9]/g,'');
+  if(!p.assignedTo)toast('Tip: pehle "Assign to staff" set karo — WhatsApp seedha us staff ko khulega.',true);
+  const L=(k,v)=>v?`${k}: ${v}\n`:'';
+  const msg=`*New lead — Shikari*\n`+L('Business',p.business)+L('Type',p.kind)+L('Contact',p.contactName)+L('Phone',p.phone)+L('Email',p.email)+L('Web/Social',p.handle)+L('Location',p.location)+L('Source',p.source)+L('Interested in',p.interest)+L('Notes',p.notes);
+  window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg.trim()),'_blank');
+}
+
 /* ============ SALES DASHBOARD (staff) ============ */
 let SD_P='month',DASH_CUR='USD';
 function dmoney(inr){if(DASH_CUR==='USD')return fcur(r2(num(inr)/usdRate()),'USD');return money(inr)}

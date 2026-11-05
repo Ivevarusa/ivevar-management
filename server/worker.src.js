@@ -8,20 +8,20 @@ const PBKDF2_ITER = 25000; // kept moderate for the Workers free-plan CPU budget
 const SESSION_DAYS = 7;
 
 /* ---------- module / permission model (mirrors the web app) ---------- */
-const MODS = ['dashboard','crm','quotes','orders','designs','purchase','inventory','production','karigars','wastage','qc','dispatch','vendors','buying','accounts','hr','reports','masters','setup','audit'];
+const MODS = ['dashboard','crm','shikari','quotes','orders','designs','purchase','inventory','production','karigars','wastage','qc','dispatch','vendors','buying','accounts','hr','reports','masters','setup','audit'];
 const LV = { none: 0, view: 1, edit: 2, approve: 3 };
-const COLL_MOD = { tasks:'dashboard', punch:'dashboard', messages:'chat', cash:'accounts', leads:'crm', quotes:'quotes', orders:'orders', designs:'designs', pos:'purchase', vouchers:'inventory', pieces:'inventory', jobs:'production', karigars:'karigars', challans:'karigars', wastage:'wastage', qc:'qc', dispatches:'dispatch', vendors:'vendors', purchases:'buying', invoices:'accounts', receipts:'accounts', bills:'accounts', payments:'accounts', expenses:'accounts', customers:'masters', suppliers:'masters', employees:'hr', attendance:'hr' };
+const COLL_MOD = { tasks:'dashboard', punch:'dashboard', messages:'chat', cash:'accounts', leads:'crm', shikari:'shikari', quotes:'quotes', orders:'orders', designs:'designs', pos:'purchase', vouchers:'inventory', pieces:'inventory', jobs:'production', karigars:'karigars', challans:'karigars', wastage:'wastage', qc:'qc', dispatches:'dispatch', vendors:'vendors', purchases:'buying', invoices:'accounts', receipts:'accounts', bills:'accounts', payments:'accounts', expenses:'accounts', customers:'masters', suppliers:'masters', employees:'hr', attendance:'hr' };
 // collections every signed-in user may read (reference data needed across screens)
-const READ_ALL = ['customers','suppliers','karigars','designs','orders','jobs','qc','dispatches','challans','vouchers','pieces','employees','wastage','vendors','purchases'];
+const READ_ALL = ['customers','suppliers','karigars','designs','orders','jobs','qc','dispatches','challans','vouchers','pieces','employees','wastage','vendors','purchases','shikari'];
 // extra modules whose EDIT right also allows writing this collection (workflow side-effects)
 const WRITE_ALT = { orders:['production','qc','dispatch','quotes','accounts'], vouchers:['production','karigars','purchase','dispatch'], pieces:['orders','dispatch'], customers:['crm','quotes'], wastage:['production','karigars'], expenses:['hr','karigars'], cash:['hr'], leads:['quotes'], challans:['production'], qc:['production'] };
-const NUMBERED = ['tasks','cash','leads','quotes','orders','designs','pos','vouchers','pieces','jobs','challans','wastage','qc','dispatches','invoices','receipts','bills','payments','expenses','customers','suppliers','karigars','employees','vendors','purchases'];
+const NUMBERED = ['tasks','cash','leads','shikari','quotes','orders','designs','pos','vouchers','pieces','jobs','challans','wastage','qc','dispatches','invoices','receipts','bills','payments','expenses','customers','suppliers','karigars','employees','vendors','purchases'];
 // ---------- job-title presets for Ivevar Office users (modules they get + modules they may approve) ----------
 const OFFICE_MODS = MODS.filter(m => !['setup','audit'].includes(m));
 const TITLE_MODS = {
   CEO: OFFICE_MODS,
   Accountant: ['dashboard','orders','vendors','buying','purchase','inventory','accounts','hr','reports','masters','dispatch'],
-  Sales: ['dashboard','quotes','orders','inventory','dispatch'],
+  Sales: ['dashboard','crm','shikari','quotes','orders','inventory','dispatch'],
   Courier: ['dashboard','orders','qc','dispatch','inventory'],
   Helper: ['dashboard','orders','dispatch','inventory']
 };
@@ -45,7 +45,7 @@ function defaultPerms() {
   Object.assign(p.dispatch, { dashboard:'view', orders:'view', qc:'view', dispatch:'approve', inventory:'view', accounts:'view' });
   return p;
 }
-const defaultNumbering = { leads:'LEAD', quotes:'QTN', orders:'JWL', designs:'DSN', pos:'PO', vouchers:'STK', pieces:'IVP', jobs:'JOB', challans:'CHL', wastage:'WST', qc:'QC', dispatches:'DSP', invoices:'INV', receipts:'RCP', bills:'BIL', payments:'PAY', expenses:'EXP', cash:'CB', tasks:'TSK', customers:'CUS', suppliers:'SUP', karigars:'KAR', employees:'EMP', vendors:'VEN', purchases:'PUR' };
+const defaultNumbering = { leads:'LEAD', shikari:'SHK', quotes:'QTN', orders:'JWL', designs:'DSN', pos:'PO', vouchers:'STK', pieces:'IVP', jobs:'JOB', challans:'CHL', wastage:'WST', qc:'QC', dispatches:'DSP', invoices:'INV', receipts:'RCP', bills:'BIL', payments:'PAY', expenses:'EXP', cash:'CB', tasks:'TSK', customers:'CUS', suppliers:'SUP', karigars:'KAR', employees:'EMP', vendors:'VEN', purchases:'PUR' };
 const defaultPurities = [{n:'24K',p:99.9,m:'Gold'},{n:'22K',p:91.6,m:'Gold'},{n:'18K',p:75.0,m:'Gold'},{n:'14K',p:58.5,m:'Gold'},{n:'10K',p:41.7,m:'Gold'},{n:'925 Silver',p:92.5,m:'Silver'},{n:'999 Silver',p:99.9,m:'Silver'},{n:'PT950',p:95.0,m:'Platinum'}];
 
 /* ---------- helpers ---------- */
