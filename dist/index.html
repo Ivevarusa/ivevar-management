@@ -1660,7 +1660,7 @@ function orderDetail(o){
 /* ============ SHIKARI — find buyers/wholesalers & WhatsApp them to staff ============ */
 const SHK_KINDS=['Buyer','Wholesaler','Retailer','Distributor','Jeweller','Reseller','Other'];
 const SHK_SRC=['Google','Instagram','Facebook','LinkedIn','WhatsApp','Website','Marketplace','Referral','Other'];
-const SHK_ST=['New','Contacted','Interested','Forwarded','Negotiating','Converted','Not interested'];
+const SHK_ST=['New','Contacted','Interested','Forwarded','Negotiating','Converted','Not interested','No WhatsApp'];
 const staffOpt=()=>USERS.filter(u=>u.active!==false).map(u=>[u.id,u.name+(u.phone?' · '+u.phone:'')]);
 const staffPhone=id=>{const u=USERS.find(x=>x.id===id);return u?(u.phone||''):''};
 function viewShikari(){
@@ -2783,6 +2783,7 @@ function viewSettings(){
     <div class="setrow link" onclick="companyForm()"><div><b>Company profile</b><div class="note">Name &amp; address on order slips, commission %</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="accountsManager()"><div><b>${ic('building')} Bank &amp; cash accounts</b><div class="note">Add your banks and cash accounts — balances &amp; money in/out calculate automatically</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="mapsKeyForm()"><div><b>${ic('globe')} Google Maps (Shikari auto-find)</b><div class="note">Places API key — buyers/wholesalers auto-find karne ke liye</div></div><span class="chev">›</span></div>
+    <div class="setrow link" onclick="waSetupForm()"><div><b>${ic('smartphone')} WhatsApp (Meta) — Shikari</b><div class="note">Cloud API credentials — bulk send + reply auto-capture ke liye</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="fxForm()"><div><b>${ic('swap')} Currency rates</b><div class="note">Set USD, AUD, GBP… → ₹ (locked onto each new order)</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="jewelRatesForm()"><div><b>${ic('gem')} Jewellery rates</b><div class="note">Gold / silver / platinum / diamond rates + labour for the quotation price calculator</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="go('setup')"><div><b>Staff &amp; users</b><div class="note">Add team members and set their permissions</div></div><span class="chev">›</span></div>
@@ -2834,6 +2835,18 @@ function jewelRatesForm(){const j=JW();
    {k:'hrMo',l:'Moissanite',t:'hr',icon:ic('gem')},
    {k:'moisMain',l:'Main stone rate (₹)',t:'num'},{k:'moisSide',l:'Side stone rate (₹)',t:'num'},{k:'moisCompare',l:'Compare-at markup %',t:'num'}],
    async onSave(v){const jewel={};Object.keys(JW()).forEach(k=>{jewel[k]=num(v[k])});await saveSettings({jewel},'jewellery rates')}})}
+function waSetupForm(){
+  const webhookUrl=location.origin+'/api/wa/webhook';
+  const vt=SET.waVerifyToken||('ivevar'+Math.random().toString(36).slice(2,10));
+  openForm({title:'WhatsApp (Meta) — connect',sub:'Meta Cloud API ke credentials daalo. Phone Number ID, WABA ID aur token Meta developer app → WhatsApp → API setup se milte hain.',pro:1,wide:1,
+   extra:`<div class="note" style="margin-bottom:10px">Meta webhook config me ye daalo →<br>Callback URL: <b>${esc(webhookUrl)}</b><br>Verify token: <b>${esc(vt)}</b></div>`,
+   value:{waPhoneId:SET.waPhoneId||'',waWabaId:SET.waWabaId||'',waToken:SET.waToken||'',waVerifyToken:vt},fields:[
+   {k:'h1',t:'hr',l:'Sender',icon:ic('smartphone')},
+   {k:'waPhoneId',l:'Phone Number ID',w:2,hint:'+1 number ka ID (API setup page pe)'},{k:'waWabaId',l:'WhatsApp Business Account ID',w:2},
+   {k:'h2',t:'hr',l:'Token & webhook',icon:ic('wallet')},
+   {k:'waToken',l:'Access token',t:'ta',w:4,hint:'Permanent system-user token (recommended)'},
+   {k:'waVerifyToken',l:'Webhook verify token',w:2,hint:'Meta webhook me yahi daalo'}],
+   async onSave(v){await saveSettings({waPhoneId:(v.waPhoneId||'').trim(),waWabaId:(v.waWabaId||'').trim(),waToken:(v.waToken||'').trim(),waVerifyToken:(v.waVerifyToken||'').trim()||vt},'whatsapp meta')}})}
 function mapsKeyForm(){
   openForm({title:'Google Maps API key',sub:'Shikari auto-find ke liye. Google Cloud Console → "Places API (New)" enable karke API key banao, phir yahan paste karo.',value:{key:SET.mapsKey||''},fields:[
    {k:'key',l:'API key',req:1,w:4,hint:'AIza… se shuru hoti hai'}],

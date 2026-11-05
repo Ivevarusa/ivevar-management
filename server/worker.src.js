@@ -123,6 +123,53 @@ async function fetchLiveRates(env, force) {
   await env.DB.prepare(`INSERT INTO config(k,v,updated_at) VALUES('settings',?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v, updated_at=excluded.updated_at`).bind(JSON.stringify(next), Date.now()).run();
   return { ok: true, settings: next };
 }
+/* ---- Meta WhatsApp Cloud API: send + inbound webhook (replies → interested → auto-forward; failed delivery → No WhatsApp) ---- */
+async function waSend(settings, to, payload) {
+  const token = settings && settings.waToken, phoneId = settings && settings.waPhoneId;
+  if (!token || !phoneId) return { ok: false, error: 'WhatsApp not configured' };
+  const num = String(to || '').replace(/[^0-9]/g, '');
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', to: num, ...payload })
+    });
+    const j = await r.json().catch(() => ({}));
+    return { ok: r.ok, status: r.status, data: j };
+  } catch (e) { return { ok: false, error: String(e && e.message || e) }; }
+}
+async function handleWaEvent(env, settings, bd) {
+  const changes = [];
+  (bd.entry || []).forEach(e => (e.changes || []).forEach(c => changes.push(c.value || {})));
+  if (!changes.length) return;
+  const rows = await env.DB.prepare(`SELECT id, body FROM docs WHERE coll='shikari' AND deleted=0`).all();
+  const docs = (rows.results || []).map(r => { try { return { id: r.id, b: JSON.parse(r.body) }; } catch (e) { return null; } }).filter(Boolean);
+  const norm = s => String(s || '').replace(/[^0-9]/g, '');
+  const findByPhone = ph => { const n = norm(ph); return n && docs.find(d => norm(d.b.phone) === n || norm(d.b.whatsapp) === n); };
+  const sys = { id: 'system', name: 'WhatsApp', role: 'admin', active: true };
+  const sales = Array.isArray(settings.shikariSales) ? settings.shikariSales : [];
+  let rr = Number(settings.shikariRR) || 0; const rr0 = rr;
+  for (const v of changes) {
+    for (const m of (v.messages || [])) {
+      const d = findByPhone(m.from); if (!d) continue;
+      if (['Converted', 'Forwarded', 'Negotiating'].includes(d.b.status)) continue;
+      const upd = { ...d.b, id: d.id, status: 'Interested', repliedAt: new Date().toISOString(), lastReply: (m.text && m.text.body) || m.type || '' };
+      if (sales.length) { upd.status = 'Forwarded'; upd.forwardedTo = sales[rr % sales.length].name; upd.forwardedAt = new Date().toISOString(); rr++; }
+      await handleSave(env, sys, settings, { coll: 'shikari', doc: upd, action: 'wa reply' }, true);
+    }
+    for (const st of (v.statuses || [])) {
+      if (st.status !== 'failed') continue;
+      const d = findByPhone(st.recipient_id); if (!d) continue;
+      const code = Number((st.errors && st.errors[0] && st.errors[0].code) || 0);
+      if ([131026, 131047, 131000, 131021, 131049].includes(code) && !['Interested', 'Forwarded', 'Converted', 'Negotiating'].includes(d.b.status)) {
+        await handleSave(env, sys, settings, { coll: 'shikari', doc: { ...d.b, id: d.id, status: 'No WhatsApp' }, action: 'wa undeliverable' }, true);
+      }
+    }
+  }
+  if (rr !== rr0) {
+    const next = { ...settings, shikariRR: rr };
+    await env.DB.prepare(`INSERT INTO config(k,v,updated_at) VALUES('settings',?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v, updated_at=excluded.updated_at`).bind(JSON.stringify(next), Date.now()).run();
+  }
+}
 function permsOf(settings) { return (settings && settings.perms) || defaultPerms(); }
 function can(user, settings, mod, lvl = 'view') {
   if (!user || !user.active) return false;
@@ -589,6 +636,21 @@ async function route(req, env, ctx) {
     return handleSave(env, sys, settings, { coll: 'leads', doc, action: 'website enquiry' });
   }
 
+  if (p === '/api/wa/webhook') {
+    const settings = await getSettings(env) || {};
+    if (method === 'GET') {
+      const mode = url.searchParams.get('hub.mode'), tok = url.searchParams.get('hub.verify_token'), ch = url.searchParams.get('hub.challenge');
+      if (mode === 'subscribe' && tok && settings.waVerifyToken && tok === settings.waVerifyToken) return new Response(ch || '', { status: 200, headers: { 'content-type': 'text/plain' } });
+      return err('Verification failed', 403);
+    }
+    if (method === 'POST') {
+      let bd; try { bd = await req.json(); } catch (e) { return json({ ok: true }); }
+      try { await handleWaEvent(env, settings, bd); } catch (e) { console.error('wa webhook', e && e.stack || e); }
+      return json({ ok: true });
+    }
+    return err('Method not allowed', 405);
+  }
+
   /* authenticated endpoints */
   const user = await authUser(req, env);
   if (!user) return err('Please sign in.', 401);
@@ -672,6 +734,14 @@ async function route(req, env, ctx) {
       })).filter(x => x.business);
       return json({ results });
     } catch (e) { return err('Google Maps call failed: ' + (e && e.message || e), 502); }
+  }
+  if (p === '/api/shikari/send' && method === 'POST') {
+    if (!can(user, settings, 'shikari', 'edit')) return err('You cannot use Shikari.', 403);
+    if (!settings || !settings.waToken || !settings.waPhoneId) return err('WhatsApp (Meta) connect nahi hai. Settings me credentials daalo.', 400);
+    const b = await body();
+    const payload = b.template ? { type: 'template', template: b.template } : { type: 'text', text: { body: String(b.text || '').slice(0, 4000), preview_url: false } };
+    const res = await waSend(settings, b.to, payload);
+    return json({ ok: res.ok, status: res.status, data: res.data, error: res.error });
   }
   if (p === '/api/settings' && method === 'POST') {
     if (!can(user, settings, 'setup', 'approve') && !can(user, settings, 'masters', 'edit')) return err('You cannot change settings.', 403);

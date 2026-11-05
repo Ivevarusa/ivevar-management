@@ -452,7 +452,7 @@ function orderDetail(o){
 /* ============ SHIKARI — find buyers/wholesalers & WhatsApp them to staff ============ */
 const SHK_KINDS=['Buyer','Wholesaler','Retailer','Distributor','Jeweller','Reseller','Other'];
 const SHK_SRC=['Google','Instagram','Facebook','LinkedIn','WhatsApp','Website','Marketplace','Referral','Other'];
-const SHK_ST=['New','Contacted','Interested','Forwarded','Negotiating','Converted','Not interested'];
+const SHK_ST=['New','Contacted','Interested','Forwarded','Negotiating','Converted','Not interested','No WhatsApp'];
 const staffOpt=()=>USERS.filter(u=>u.active!==false).map(u=>[u.id,u.name+(u.phone?' · '+u.phone:'')]);
 const staffPhone=id=>{const u=USERS.find(x=>x.id===id);return u?(u.phone||''):''};
 function viewShikari(){
