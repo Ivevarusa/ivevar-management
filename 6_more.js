@@ -462,6 +462,7 @@ function viewSettings(){
    ${admin?`<div class="card setcard"><div class="cap2">${ic('building')} Office</div>
     <div class="setrow link" onclick="companyForm()"><div><b>Company profile</b><div class="note">Name &amp; address on order slips, commission %</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="accountsManager()"><div><b>${ic('building')} Bank &amp; cash accounts</b><div class="note">Add your banks and cash accounts — balances &amp; money in/out calculate automatically</div></div><span class="chev">›</span></div>
+    <div class="setrow link" onclick="mapsKeyForm()"><div><b>${ic('globe')} Google Maps (Shikari auto-find)</b><div class="note">Places API key — buyers/wholesalers auto-find karne ke liye</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="fxForm()"><div><b>${ic('swap')} Currency rates</b><div class="note">Set USD, AUD, GBP… → ₹ (locked onto each new order)</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="jewelRatesForm()"><div><b>${ic('gem')} Jewellery rates</b><div class="note">Gold / silver / platinum / diamond rates + labour for the quotation price calculator</div></div><span class="chev">›</span></div>
     <div class="setrow link" onclick="go('setup')"><div><b>Staff &amp; users</b><div class="note">Add team members and set their permissions</div></div><span class="chev">›</span></div>
@@ -513,6 +514,10 @@ function jewelRatesForm(){const j=JW();
    {k:'hrMo',l:'Moissanite',t:'hr',icon:ic('gem')},
    {k:'moisMain',l:'Main stone rate (₹)',t:'num'},{k:'moisSide',l:'Side stone rate (₹)',t:'num'},{k:'moisCompare',l:'Compare-at markup %',t:'num'}],
    async onSave(v){const jewel={};Object.keys(JW()).forEach(k=>{jewel[k]=num(v[k])});await saveSettings({jewel},'jewellery rates')}})}
+function mapsKeyForm(){
+  openForm({title:'Google Maps API key',sub:'Shikari auto-find ke liye. Google Cloud Console → "Places API (New)" enable karke API key banao, phir yahan paste karo.',value:{key:SET.mapsKey||''},fields:[
+   {k:'key',l:'API key',req:1,w:4,hint:'AIza… se shuru hoti hai'}],
+   async onSave(v){await saveSettings({mapsKey:(v.key||'').trim()},'google maps key')}})}
 function setTheme(t){PREF.set('theme',t);applyPrefs();render()}
 function setSizePref(s){PREF.set('size',s);applyPrefs();render()}
 function askPush(){if(!('Notification'in window)){toast('Notifications are not supported here.',true);return}Notification.requestPermission().then(p=>{toast(p==='granted'?'Notifications turned on ✓':'Not allowed');render()})}

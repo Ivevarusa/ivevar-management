@@ -171,7 +171,7 @@ document.addEventListener('change',e=>{const s=e.target;if(!s.matches||!s.matche
   s.value=opt.value;s.dataset.prev=opt.value;s.dispatchEvent(new Event('change',{bubbles:true}))});
 /* Safe auto-casing: names → ALL CAPS, other plain text → first letter capital.
    Technical fields (email, phone, code/SKU, rate, amount, size, spec, notes/textareas, numbers/dates) are left untouched. */
-const CASE_SKIP=/email|mail|phone|mobile|whats|tel|sku|code|ref|track|url|web|site|link|gst|pan|vat|iban|ifsc|swift|account|bank|rate|amount|price|cost|qty|quantity|weight|wt|carat|size|purity|spec|note|desc|instruction|address|addr|passw|otp|pin|upi|hsn|serial|imei|number/i;
+const CASE_SKIP=/email|mail|phone|mobile|whats|tel|sku|code|ref|track|url|web|site|link|handle|gst|pan|vat|iban|ifsc|swift|account|bank|rate|amount|price|cost|qty|quantity|weight|wt|carat|size|purity|spec|note|desc|instruction|address|addr|passw|otp|pin|upi|hsn|serial|imei|number|key|token|secret|^api/i;
 const CASE_NAME=/name|person/i;
 const capFirst=s=>s.replace(/^(\s*)([a-zà-ÿ])/,(m,sp,c)=>sp+c.toUpperCase());
 document.addEventListener('focusout',e=>{const el=e.target;if(!el||el.tagName!=='INPUT')return;

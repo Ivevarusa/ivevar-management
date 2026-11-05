@@ -459,7 +459,7 @@ function viewShikari(){
   const rows=applyFil('shikari',S.shikari).sort((a,b)=>(b.no||'').localeCompare(a.no||''));
   const kp=(v,l,c='')=>`<div class="card kpi ${c}"><span class="v">${v}</span><span class="l">${esc(l)}</span></div>`;
   const nw=rows.filter(r=>(r.status||'New')==='New').length,conv=rows.filter(r=>r.status==='Converted').length;
-  return phead('Shikari','Buyers &amp; wholesalers dhoondho aur interested leads ko sales team ko WhatsApp forward karo. Auto-find + bulk WhatsApp aage add hoga.',can('shikari','edit')?btn(ic('smartphone')+' Sales team','onclick="shikariSalesForm()"')+btn('+ Add prospect','onclick="shikariForm()"','pri'):'')
+  return phead('Shikari','Buyers &amp; wholesalers dhoondho aur interested leads ko sales team ko WhatsApp forward karo. Auto-find + bulk WhatsApp aage add hoga.',can('shikari','edit')?btn(ic('globe')+' Find on Google Maps','onclick="shikariFindForm()"','pri')+btn(ic('smartphone')+' Sales team','onclick="shikariSalesForm()"')+btn('+ Add prospect','onclick="shikariForm()"'):'')
    +`<div class="grid g3" style="margin-bottom:12px">${kp(rows.length,'Prospects','gold')}${kp(nw,'New',nw?'alert':'')}${kp(conv,'Converted')}</div>`
    +filterBar('shikari',SHK_ST)
    +table([{l:'Code',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Business',h:r=>`<b>${esc(r.business||'')}</b>${r.contactName?`<div class="note">${esc(r.contactName)}</div>`:''}`},{l:'Type',h:r=>stPill(r.kind||'Buyer')},{l:'Source',h:r=>esc(r.source||'—')},{l:'Contact',h:r=>esc([r.phone,r.email].filter(Boolean).join(' · ')||'—')},{l:'Location',h:r=>esc(r.location||'—')},{l:'Assigned',h:r=>esc(r.assignedTo?userName(r.assignedTo):'—')},{l:'Status',h:r=>stPill(r.status||'New')},{l:'',h:r=>can('shikari','edit')?`<button class="btn sm" onclick="event.stopPropagation();shikariWhatsApp('${r.id}')" title="WhatsApp to assigned staff">${ic('smartphone')}</button> <button class="btn sm pri" onclick="event.stopPropagation();shikariForward('${r.id}')" title="Forward to sales team (round-robin)">→ Sales</button>`:''}],
@@ -507,6 +507,26 @@ function shikariForward(id){
   window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(('*Interested lead — close this* 🔥\n'+shkLead(p)).trim()),'_blank');
   toast('Forwarded to '+s.name+' ✓');
 }
+/* ---- Auto-find from Google Maps (Places API) ---- */
+function shikariFindForm(){
+  if(!SET.mapsKey){if(ME.role==='admin'){toast('Pehle Google Maps API key daalni hogi.',true);mapsKeyForm();}else toast('Admin se Google Maps API key set karwao (Settings).',true);return}
+  openForm({title:'Find on Google Maps',sub:'Business type + jagah daalo — Google Maps se buyers/wholesalers aa jaayenge.',value:{max:20},fields:[
+   {k:'what',l:'Kya dhoondhna hai',req:1,w:2,hint:'e.g. diamond wholesaler, jewellery store, gold wholesaler'},
+   {k:'where',l:'Jagah / city / country',w:2,hint:'e.g. Mumbai · New York · Dubai'},
+   {k:'max',l:'Kitne laane hain (max 20)',t:'num',d:20}],
+   async onSave(v){const query=[v.what,v.where].filter(Boolean).join(' in ');toast('Google Maps pe dhoondh raha hoon…');
+     try{const r=await api('/api/shikari/find',{query,max:num(v.max)||20});shikariFindResults(r.results||[],query)}catch(e){toast(e.message,true);return false}}})}
+function shikariFindResults(list,query){
+  if(!list.length){modal({title:'Kuch nahi mila',body:`<div class="note">"${esc(query)}" ke liye result nahi aaya. Alag keyword ya jagah try karo.</div>`,foot:'<button class="btn" data-close>Close</button>'});return}
+  const existing=new Set(S.shikari.map(p=>(p.phone||'').replace(/\D/g,'')).filter(Boolean));
+  const rows=list.map((r,i)=>{const dup=r.phone&&existing.has((r.phone||'').replace(/\D/g,''));return `<tr><td><b>${esc(r.business)}</b>${r.location?`<div class="note">${esc(r.location)}</div>`:''}</td><td>${esc(r.phone||'—')}</td><td>${r.handle?`<a href="${esc(r.handle)}" target="_blank" rel="noopener">link</a>`:'—'}</td><td>${dup?'<span class="pill">Already added</span>':`<button class="btn sm" data-add="${i}">+ Add</button>`}</td></tr>`}).join('');
+  modal({title:`${list.length} mile · ${esc(query)}`,wide:1,
+   body:`<div class="tw"><table><thead><tr><th>Business</th><th>Phone</th><th>Web</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`,
+   foot:`<button class="btn pri" data-addall>+ Add all new</button><button class="btn" data-close>Close</button>`,
+   onMount(ov,close){
+     const mk=r=>({business:r.business,phone:r.phone||'',handle:r.handle||'',location:r.location||'',source:'Google Maps',kind:'Wholesaler',status:'New'});
+     ov.querySelectorAll('[data-add]').forEach(btn=>btn.onclick=async()=>{btn.disabled=true;await save('shikari',mk(list[+btn.dataset.add]),{silent:1});btn.outerHTML='<span class="pill good">Added ✓</span>'});
+     ov.querySelector('[data-addall]').onclick=async e=>{e.target.disabled=true;let n=0;for(const r of list){const ph=(r.phone||'').replace(/\D/g,'');if(ph&&existing.has(ph))continue;await save('shikari',mk(r),{silent:1});if(ph)existing.add(ph);n++}toast(n+' prospects add ho gaye ✓');close();go('shikari')}}})}
 
 /* ============ SALES DASHBOARD (staff) ============ */
 let SD_P='month',DASH_CUR='USD';

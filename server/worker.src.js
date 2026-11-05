@@ -646,6 +646,33 @@ async function route(req, env, ctx) {
     const res = await fetchLiveRates(env, !!b.force);
     return json({ ok: res.ok !== false, skipped: !!res.skipped, settings: res.settings || settings });
   }
+  if (p === '/api/shikari/find' && method === 'POST') {
+    // Shikari auto-find: Google Places (New) Text Search → buyers/wholesalers by keyword + place
+    if (!can(user, settings, 'shikari', 'edit')) return err('You cannot use Shikari.', 403);
+    const key = settings && settings.mapsKey;
+    if (!key) return err('Google Maps API key set nahi hai. Settings → Google Maps me key daalo.', 400);
+    const b = await body();
+    const q = String(b.query || '').trim();
+    if (!q) return err('Kya dhoondhna hai wo likho.');
+    try {
+      const resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.primaryType,places.rating,places.googleMapsUri' },
+        body: JSON.stringify({ textQuery: q, pageSize: Math.min(num(b.max) || 20, 20), regionCode: b.region || undefined })
+      });
+      const j = await resp.json();
+      if (j.error) return err('Google: ' + ((j.error && j.error.message) || 'request failed'), 400);
+      const results = (j.places || []).map(pl => ({
+        business: (pl.displayName && pl.displayName.text) || '',
+        phone: pl.internationalPhoneNumber || pl.nationalPhoneNumber || '',
+        handle: pl.websiteUri || pl.googleMapsUri || '',
+        location: pl.formattedAddress || '',
+        type: pl.primaryType || '',
+        rating: pl.rating || ''
+      })).filter(x => x.business);
+      return json({ results });
+    } catch (e) { return err('Google Maps call failed: ' + (e && e.message || e), 502); }
+  }
   if (p === '/api/settings' && method === 'POST') {
     if (!can(user, settings, 'setup', 'approve') && !can(user, settings, 'masters', 'edit')) return err('You cannot change settings.', 403);
     const b = await body(); const next = b.settings || {};
