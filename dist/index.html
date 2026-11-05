@@ -1669,6 +1669,7 @@ function viewShikari(){
   const nw=rows.filter(r=>(r.status||'New')==='New').length,conv=rows.filter(r=>r.status==='Converted').length;
   return phead('Shikari','Buyers &amp; wholesalers dhoondho aur interested leads ko sales team ko WhatsApp forward karo. Auto-find + bulk WhatsApp aage add hoga.',can('shikari','edit')?btn(ic('globe')+' Find on Google Maps','onclick="shikariFindForm()"','pri')+btn(ic('clipboard')+' Import CSV','onclick="shikariImportForm()"')+btn(ic('smartphone')+' Sales team','onclick="shikariSalesForm()"')+btn('+ Add prospect','onclick="shikariForm()"'):'')
    +`<div class="grid g3" style="margin-bottom:12px">${kp(rows.length,'Prospects','gold')}${kp(nw,'New',nw?'alert':'')}${kp(conv,'Converted')}</div>`
+   +(can('shikari','edit')?shikariSearchPanel():'')
    +filterBar('shikari',SHK_ST)
    +table([{l:'Code',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Business',h:r=>`<b>${esc(r.business||'')}</b>${r.contactName?`<div class="note">${esc(r.contactName)}</div>`:''}`},{l:'Type',h:r=>stPill(r.kind||'Buyer')},{l:'Source',h:r=>esc(r.source||'—')},{l:'Contact',h:r=>esc([r.phone,r.email].filter(Boolean).join(' · ')||'—')},{l:'Location',h:r=>esc(r.location||'—')},{l:'Assigned',h:r=>esc(r.assignedTo?userName(r.assignedTo):'—')},{l:'Status',h:r=>stPill(r.status||'New')},{l:'',h:r=>can('shikari','edit')?`<button class="btn sm" onclick="event.stopPropagation();shikariWhatsApp('${r.id}')" title="WhatsApp to assigned staff">${ic('smartphone')}</button> <button class="btn sm pri" onclick="event.stopPropagation();shikariForward('${r.id}')" title="Forward to sales team (round-robin)">→ Sales</button>`:''}],
      rows,{onClick:shikariForm,empty:'No prospects yet',emptyHint:'Buyers/wholesalers add karo jo aapko mile — ya aage auto-find se apne aap aayenge.'})}
@@ -1716,15 +1717,38 @@ function shikariForward(id){
   toast('Forwarded to '+s.name+' ✓');
 }
 /* ---- Auto-find from Google Maps (Places API) ---- */
-function shikariFindForm(){
+/* worldwide suggested searches (India intentionally excluded) */
+const SHK_WHAT=['diamond wholesaler','jewelry wholesaler','gold jewellery wholesaler','loose diamond dealer','moissanite wholesaler','jewelry store','diamond jewelry manufacturer'];
+const SHK_WHERE=['New York','Los Angeles','London','Antwerp','Dubai','Hong Kong','Bangkok','Toronto','Sydney','Singapore','Dubai','Tel Aviv'];
+const SHK_SUGGEST=[
+ {what:'diamond wholesaler',where:'New York'},{what:'jewelry wholesaler',where:'Los Angeles'},{what:'diamond wholesaler',where:'Antwerp'},
+ {what:'gold jewellery wholesaler',where:'Dubai'},{what:'loose diamond dealer',where:'Hong Kong'},{what:'jewelry wholesaler',where:'London'},
+ {what:'diamond jewelry manufacturer',where:'Bangkok'},{what:'jewelry store',where:'Toronto'},{what:'jewellery wholesaler',where:'Sydney'},
+ {what:'moissanite wholesaler',where:'New York'},{what:'jewelry wholesaler',where:'Singapore'},{what:'diamond dealer',where:'Tel Aviv'}];
+async function shikariRunSearch(query,max){
+  if(!SET.mapsKey){if(ME.role==='admin'){toast('Pehle Google Maps API key daalni hogi.',true);mapsKeyForm()}else toast('Admin se Google Maps API key set karwao.',true);return false}
+  toast('Google Maps pe dhoondh raha hoon…');
+  try{const r=await api('/api/shikari/find',{query,max:num(max)||20});shikariFindResults(r.results||[],query,query);return true}catch(e){toast(e.message,true);return false}}
+function shikariFindForm(pre){
   if(!SET.mapsKey){if(ME.role==='admin'){toast('Pehle Google Maps API key daalni hogi.',true);mapsKeyForm();}else toast('Admin se Google Maps API key set karwao (Settings).',true);return}
-  openForm({title:'Find on Google Maps',sub:'Business type + jagah daalo — Google Maps se buyers/wholesalers aa jaayenge.',value:{max:20},fields:[
-   {k:'what',l:'Kya dhoondhna hai',req:1,w:2,hint:'e.g. diamond wholesaler, jewellery store, gold wholesaler'},
-   {k:'where',l:'Jagah / city / country',w:2,hint:'e.g. Mumbai · New York · Dubai'},
+  openForm({title:'Find on Google Maps',sub:'Business type + jagah (city/area/country) daalo. India chhod ke koi bhi jagah.',value:{max:20,...(pre||{})},fields:[
+   {k:'what',l:'Kya dhoondhna hai',req:1,w:2,list:()=>SHK_WHAT,hint:'e.g. diamond wholesaler, jewelry store, loose diamond dealer'},
+   {k:'where',l:'City / area / country',w:2,list:()=>SHK_WHERE,hint:'e.g. New York · Dubai · Antwerp · London (India nahi)'},
    {k:'max',l:'Kitne laane hain (max 20)',t:'num',d:20}],
-   async onSave(v){const query=[v.what,v.where].filter(Boolean).join(' in ');toast('Google Maps pe dhoondh raha hoon…');
-     try{const r=await api('/api/shikari/find',{query,max:num(v.max)||20});shikariFindResults(r.results||[],query)}catch(e){toast(e.message,true);return false}}})}
-function shikariFindResults(list,query){
+   async onSave(v){const query=[v.what,v.where].filter(Boolean).join(' in ');return await shikariRunSearch(query,v.max)}})}
+/* search history derived from prospects' findQuery — no extra storage needed */
+function shikariHistory(){const m={};S.shikari.forEach(p=>{if(!p.findQuery)return;const k=p.findQuery;(m[k]||(m[k]={q:k,n:0,last:''}));m[k].n++;if((p.createdAt||'')>m[k].last)m[k].last=p.createdAt||''});return Object.values(m).sort((a,b)=>(b.last||'').localeCompare(a.last||''))}
+function shikariSearchPanel(){
+  const done=new Set(S.shikari.map(p=>p.findQuery).filter(Boolean));
+  const hist=shikariHistory();
+  const sugg=SHK_SUGGEST.map(s=>{const q=[s.what,s.where].filter(Boolean).join(' in ');return {q,done:done.has(q)}});
+  return `<details class="card" style="margin-bottom:12px"><summary style="cursor:pointer;font-weight:700;list-style:none">${ic('globe')} Searches — worldwide suggestions &amp; history ${hist.length?`<span class="pill">${hist.length} done</span>`:''}</summary>
+   <div style="margin-top:10px"><div class="note" style="margin-bottom:6px">Suggested (click to run · <b>✓</b> = ho chuka). India exclude.</div>
+   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">${sugg.map(s=>`<button class="btn sm ${s.done?'':'pri'}" onclick='shikariRunSearch(${JSON.stringify(s.q)})'>${s.done?'✓ ':''}${esc(s.q)}</button>`).join('')}</div>
+   ${hist.length?`<div class="note" style="margin:10px 0 6px">Aapki history — jo ho chuka</div>${table([{l:'Search',h:r=>esc(r.q)},{l:'Mile',n:1,k:'n'},{l:'Last',h:r=>fdate(r.last)},{l:'',h:r=>`<button class="btn sm" onclick='shikariRunSearch(${JSON.stringify(r.q)})'>Run again</button>`}],hist)}`:'<div class="note" style="margin-top:8px">Abhi koi search nahi hui. Upar se ek suggestion click karo ya "Find on Google Maps".</div>'}
+   </div></details>`;
+}
+function shikariFindResults(list,query,findQuery){
   if(!list.length){modal({title:'Kuch nahi mila',body:`<div class="note">"${esc(query)}" ke liye result nahi aaya. Alag keyword ya jagah try karo.</div>`,foot:'<button class="btn" data-close>Close</button>'});return}
   const existing=new Set(S.shikari.map(p=>(p.phone||'').replace(/\D/g,'')).filter(Boolean));
   const rows=list.map((r,i)=>{const dup=r.phone&&existing.has((r.phone||'').replace(/\D/g,''));return `<tr><td><b>${esc(r.business)}</b>${r.location?`<div class="note">${esc(r.location)}</div>`:''}</td><td>${esc(r.phone||'—')}</td><td>${r.handle?`<a href="${esc(r.handle)}" target="_blank" rel="noopener">link</a>`:'—'}</td><td>${dup?'<span class="pill">Already added</span>':`<button class="btn sm" data-add="${i}">+ Add</button>`}</td></tr>`}).join('');
@@ -1732,7 +1756,7 @@ function shikariFindResults(list,query){
    body:`<div class="tw"><table><thead><tr><th>Business</th><th>Phone</th><th>Web</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`,
    foot:`<button class="btn pri" data-addall>+ Add all new</button><button class="btn" data-close>Close</button>`,
    onMount(ov,close){
-     const mk=r=>({business:r.business,phone:r.phone||'',email:r.email||'',handle:r.handle||'',location:r.location||'',source:r.source||'Google Maps',kind:'Wholesaler',status:'New'});
+     const mk=r=>({business:r.business,phone:r.phone||'',email:r.email||'',handle:r.handle||'',location:r.location||'',source:r.source||'Google Maps',kind:'Wholesaler',status:'New',...(findQuery?{findQuery}:{})});
      ov.querySelectorAll('[data-add]').forEach(btn=>btn.onclick=async()=>{btn.disabled=true;await save('shikari',mk(list[+btn.dataset.add]),{silent:1});btn.outerHTML='<span class="pill good">Added ✓</span>'});
      ov.querySelector('[data-addall]').onclick=async e=>{e.target.disabled=true;let n=0;for(const r of list){const ph=(r.phone||'').replace(/\D/g,'');if(ph&&existing.has(ph))continue;await save('shikari',mk(r),{silent:1});if(ph)existing.add(ph);n++}toast(n+' prospects add ho gaye ✓');close();go('shikari')}}})}
 /* ---- Free lead import: paste/upload CSV from ANY source (free scraper extension, IndiaMART, Justdial, manual) ---- */
