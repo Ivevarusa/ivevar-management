@@ -459,7 +459,7 @@ function viewShikari(){
   const rows=applyFil('shikari',S.shikari).sort((a,b)=>(b.no||'').localeCompare(a.no||''));
   const kp=(v,l,c='')=>`<div class="card kpi ${c}"><span class="v">${v}</span><span class="l">${esc(l)}</span></div>`;
   const nw=rows.filter(r=>(r.status||'New')==='New').length,conv=rows.filter(r=>r.status==='Converted').length;
-  return phead('Shikari','Buyers &amp; wholesalers dhoondho aur interested leads ko sales team ko WhatsApp forward karo. Auto-find + bulk WhatsApp aage add hoga.',can('shikari','edit')?btn(ic('globe')+' Find on Google Maps','onclick="shikariFindForm()"','pri')+btn(ic('smartphone')+' Sales team','onclick="shikariSalesForm()"')+btn('+ Add prospect','onclick="shikariForm()"'):'')
+  return phead('Shikari','Buyers &amp; wholesalers dhoondho aur interested leads ko sales team ko WhatsApp forward karo. Auto-find + bulk WhatsApp aage add hoga.',can('shikari','edit')?btn(ic('globe')+' Find on Google Maps','onclick="shikariFindForm()"','pri')+btn(ic('clipboard')+' Import CSV','onclick="shikariImportForm()"')+btn(ic('smartphone')+' Sales team','onclick="shikariSalesForm()"')+btn('+ Add prospect','onclick="shikariForm()"'):'')
    +`<div class="grid g3" style="margin-bottom:12px">${kp(rows.length,'Prospects','gold')}${kp(nw,'New',nw?'alert':'')}${kp(conv,'Converted')}</div>`
    +filterBar('shikari',SHK_ST)
    +table([{l:'Code',h:r=>`<span class="ref">${esc(r.no)}</span>`},{l:'Business',h:r=>`<b>${esc(r.business||'')}</b>${r.contactName?`<div class="note">${esc(r.contactName)}</div>`:''}`},{l:'Type',h:r=>stPill(r.kind||'Buyer')},{l:'Source',h:r=>esc(r.source||'—')},{l:'Contact',h:r=>esc([r.phone,r.email].filter(Boolean).join(' · ')||'—')},{l:'Location',h:r=>esc(r.location||'—')},{l:'Assigned',h:r=>esc(r.assignedTo?userName(r.assignedTo):'—')},{l:'Status',h:r=>stPill(r.status||'New')},{l:'',h:r=>can('shikari','edit')?`<button class="btn sm" onclick="event.stopPropagation();shikariWhatsApp('${r.id}')" title="WhatsApp to assigned staff">${ic('smartphone')}</button> <button class="btn sm pri" onclick="event.stopPropagation();shikariForward('${r.id}')" title="Forward to sales team (round-robin)">→ Sales</button>`:''}],
@@ -524,9 +524,41 @@ function shikariFindResults(list,query){
    body:`<div class="tw"><table><thead><tr><th>Business</th><th>Phone</th><th>Web</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`,
    foot:`<button class="btn pri" data-addall>+ Add all new</button><button class="btn" data-close>Close</button>`,
    onMount(ov,close){
-     const mk=r=>({business:r.business,phone:r.phone||'',handle:r.handle||'',location:r.location||'',source:'Google Maps',kind:'Wholesaler',status:'New'});
+     const mk=r=>({business:r.business,phone:r.phone||'',email:r.email||'',handle:r.handle||'',location:r.location||'',source:r.source||'Google Maps',kind:'Wholesaler',status:'New'});
      ov.querySelectorAll('[data-add]').forEach(btn=>btn.onclick=async()=>{btn.disabled=true;await save('shikari',mk(list[+btn.dataset.add]),{silent:1});btn.outerHTML='<span class="pill good">Added ✓</span>'});
      ov.querySelector('[data-addall]').onclick=async e=>{e.target.disabled=true;let n=0;for(const r of list){const ph=(r.phone||'').replace(/\D/g,'');if(ph&&existing.has(ph))continue;await save('shikari',mk(r),{silent:1});if(ph)existing.add(ph);n++}toast(n+' prospects add ho gaye ✓');close();go('shikari')}}})}
+/* ---- Free lead import: paste/upload CSV from ANY source (free scraper extension, IndiaMART, Justdial, manual) ---- */
+function shikariImportForm(){
+  modal({title:'Import leads (CSV) — free',sub:'Kisi bhi free source se nikaale leads: CSV file upload karo ya paste karo. Columns: business, phone, email, location, website.',wide:1,
+   body:`<div class="f"><label>CSV file upload</label><input type="file" id="shkCsvFile" accept=".csv,text/csv,text/plain"></div>
+     <div class="f w4"><label>…ya seedha yahan paste karo</label><textarea id="shkCsvText" style="width:100%;min-height:150px;font-family:monospace;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--surface)" placeholder="business, phone, email, location, website
+Star Diamonds, +9198..., info@star.com, Mumbai, https://star.com"></textarea></div>
+     <div class="note">Pehli line header ho to columns apne aap pehchaan lenge (business/name, phone/mobile, email, location/address/city, website/url).</div>`,
+   foot:`<button class="btn pri" id="shkCsvGo">Parse &amp; preview</button><button class="btn" data-close>Cancel</button>`,
+   onMount(ov,close){
+     const ta=ov.querySelector('#shkCsvText');
+     ov.querySelector('#shkCsvFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{ta.value=rd.result;toast('File loaded — Parse dabao')};rd.readAsText(f)};
+     ov.querySelector('#shkCsvGo').onclick=()=>{const list=parseLeadsCSV(ta.value);if(!list.length){toast('Koi valid row nahi mili. Format check karo.',true);return}close();shikariFindResults(list,'CSV import — '+list.length+' leads')};
+   }})}
+function parseLeadsCSV(text){
+  const lines=String(text||'').split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(!lines.length)return [];
+  const splitRow=l=>{const out=[];let cur='',q=false;for(let i=0;i<l.length;i++){const c=l[i];if(c==='"'){q=!q}else if((c===','||c===';'||c==='\t')&&!q){out.push(cur);cur=''}else cur+=c}out.push(cur);return out.map(s=>s.trim().replace(/^"|"$/g,''))};
+  const first=splitRow(lines[0]).map(h=>h.toLowerCase());
+  const hasHdr=first.some(h=>/business|name|phone|mobile|email|location|address|city|website|url|company|contact/.test(h));
+  const cols=hasHdr?first:null;
+  const idx=names=>cols?cols.findIndex(h=>names.some(n=>h.includes(n))):-1;
+  const iB=idx(['business','company','name']),iP=idx(['phone','mobile','whats','contact','number']),iE=idx(['email','mail']),iL=idx(['location','address','city','area']),iW=idx(['website','url','web','site','handle']);
+  const rows=hasHdr?lines.slice(1):lines;const out=[];
+  for(const l of rows){const c=splitRow(l);const g=i=>i>=0?(c[i]||''):'';
+    let business,phone,email,location,handle;
+    if(cols){business=g(iB);phone=g(iP);email=g(iE);location=g(iL);handle=g(iW)}
+    else{business=c[0]||'';phone=c.find(x=>/\+?\d[\d\s\-()]{6,}/.test(x))||'';email=c.find(x=>/@/.test(x))||'';handle=c.find(x=>/^https?:|www\./i.test(x))||'';location=c.slice(1).find(x=>x&&x!==phone&&x!==email&&x!==handle&&!/^https?:/i.test(x))||''}
+    if(!business&&!phone&&!email)continue;
+    out.push({business:business||phone||email||'Lead',phone,email,location,handle,source:'Import'});
+  }
+  return out;
+}
 
 /* ============ SALES DASHBOARD (staff) ============ */
 let SD_P='month',DASH_CUR='USD';
